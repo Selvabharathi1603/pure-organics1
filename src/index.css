@@ -2,22 +2,22 @@
 
 @layer base {
   body {
-    @apply bg-[#06140e] text-[#e8ece9] antialiased selection:bg-[#d4af37] selection:text-[#06140e];
+    @apply bg-[#faf7f2] text-[#162a1e] antialiased selection:bg-[#2e7d4d] selection:text-white;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Custom Bottle Green & Gold Scrollbar */
+  /* Custom Botanical Green & Linen Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #06140e;
+    background: #faf7f2;
   }
   ::-webkit-scrollbar-thumb {
-    background: #19382b;
+    background: #c5d8cc;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #d4af37;
+    background: #2e7d4d;
   }
 }

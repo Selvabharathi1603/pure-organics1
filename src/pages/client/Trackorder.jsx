@@ -1,454 +1,186 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Trash2,
-  ShoppingBag,
-  ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  Copy,
-  PackageCheck,
+  Search,
   Compass,
+  PackageCheck,
+  AlertCircle,
+  MapPin,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
 
-export default function Cart() {
-  const { cart, updateQuantity, removeFromCart, placeOrder } = useStore();
+export default function TrackOrder() {
+  const { orders } = useStore();
+  const [query, setQuery] = useState("");
+  const [searchedOrder, setSearchedOrder] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const [customer, setCustomer] = useState({
-    name: "",
-    phone: "",
-    address: "",
-  });
-
-  // State to hold placed order details on the same page
-  const [completedOrder, setCompletedOrder] = useState(null);
-  const [copied, setCopied] = useState(false);
-
-  const totalCartItems = cart.reduce((sum, item) => sum + (item.qty || 1), 0);
-  const totalAmount = cart.reduce(
-    (sum, item) => sum + item.price * (item.qty || 1),
-    0,
-  );
-
-  const handleSubmit = (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
-    if (
-      !customer.name.trim() ||
-      !customer.phone.trim() ||
-      !customer.address.trim()
-    ) {
-      alert("Please enter full delivery details!");
-      return;
+    if (!query.trim()) return;
+
+    const found = orders.find(
+      (ord) => ord.trackingId?.toUpperCase() === query.trim().toUpperCase(),
+    );
+
+    if (found) {
+      setSearchedOrder(found);
+      setErrorMsg("");
+    } else {
+      setSearchedOrder(null);
+      setErrorMsg(`No active harvest order found for "${query.trim()}".`);
     }
-
-    // Capture current snapshot of items and total before clearCart inside placeOrder
-    const orderSnapshot = {
-      items: [...cart],
-      total: totalAmount,
-      customer: { ...customer },
-      date: new Date().toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-    };
-
-    // Place the order in store context
-    const generatedId = placeOrder(customer);
-
-    // Save locally to display on the current screen
-    setCompletedOrder({
-      ...orderSnapshot,
-      trackingId: generatedId,
-      status: "Placed",
-    });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const copyTrackingId = (id) => {
-    navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  // --------------------------------------------------------------------------
-  // VIEW 1: SUCCESS CONFIRMATION DISPLAYED ON THE EXACT SAME PAGE
-  // --------------------------------------------------------------------------
-  if (completedOrder) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-in fade-in duration-300">
-        {/* Success Header Banner */}
-        <div className="bg-gradient-to-r from-[#0d2e21] via-[#091f16] to-[#0d2e21] border border-[#d4af37]/50 rounded-3xl p-6 sm:p-10 shadow-[0_0_40px_rgba(212,175,55,0.18)] text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#d4af37] flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(212,175,55,0.25)]">
-            <CheckCircle2 className="w-9 h-9" />
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold tracking-[0.25em] text-[#d4af37]">
-              Order Placed Successfully
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white">
-              Thank You for Supporting Native Harvests
-            </h1>
-            <p className="text-xs sm:text-sm text-[#a3b8af] max-w-lg mx-auto">
-              We have received your order for Cash on Delivery. Keep your
-              Tracking ID handy to track dispatch milestones.
-            </p>
-          </div>
-
-          {/* Large On-Screen Tracking ID Box */}
-          <div className="inline-flex items-center gap-3 bg-[#06140e] border border-[#1d4131] rounded-2xl px-6 py-3.5 shadow-inner">
-            <div className="text-left">
-              <span className="text-[10px] uppercase tracking-wider text-[#738d81] block">
-                Tracking Number
-              </span>
-              <span className="font-mono text-lg font-bold text-[#f3e5ab] tracking-widest">
-                {completedOrder.trackingId}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => copyTrackingId(completedOrder.trackingId)}
-              className="ml-2 p-2 rounded-xl bg-[#0d2e21] border border-[#d4af37]/40 text-[#d4af37] hover:bg-[#d4af37] hover:text-[#06140e] transition-all cursor-pointer"
-              title="Copy to clipboard"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
-
-          {copied && (
-            <p className="text-xs font-semibold text-[#d4af37] animate-pulse">
-              ✓ Tracking ID copied to clipboard!
-            </p>
-          )}
-        </div>
-
-        {/* Live Tracking Milestones */}
-        <div className="bg-[#0b2319] border border-[#183d2d] rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b border-[#183d2d] pb-4">
-            <div>
-              <h2 className="font-serif text-lg font-bold text-white">
-                Live Delivery Status
-              </h2>
-              <p className="text-xs text-[#a3b8af]">
-                Cash on Delivery:{" "}
-                <span className="text-[#f3e5ab] font-bold">
-                  ₹{completedOrder.total}
-                </span>
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#d4af37]/15 text-[#f3e5ab] border border-[#d4af37]/30">
-              {completedOrder.status}
-            </span>
-          </div>
-
-          <TrackingStepper currentStatus={completedOrder.status} />
-        </div>
-
-        {/* Order Summary & Customer Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Purchased Items */}
-          <div className="bg-[#0b2319] border border-[#183d2d] rounded-3xl p-6 shadow-xl space-y-4">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-[#d4af37]">
-              Items in Package
-            </h3>
-            <div className="divide-y divide-[#183d2d]">
-              {completedOrder.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="py-2.5 flex justify-between items-center text-xs"
-                >
-                  <span className="text-[#e8ece9]">
-                    {item.name}{" "}
-                    <span className="text-[#738d81]">
-                      ({item.unit}) × {item.qty}
-                    </span>
-                  </span>
-                  <span className="font-mono font-bold text-[#f3e5ab]">
-                    ₹{item.price * item.qty}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="pt-2 border-t border-[#183d2d] flex justify-between items-center text-sm font-bold">
-              <span className="text-[#a3b8af]">Total Payable:</span>
-              <span className="font-serif text-lg text-[#d4af37]">
-                ₹{completedOrder.total}
-              </span>
-            </div>
-          </div>
-
-          {/* Delivery Address */}
-          <div className="bg-[#0b2319] border border-[#183d2d] rounded-3xl p-6 shadow-xl space-y-3">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-[#d4af37]">
-              Recipient Details
-            </h3>
-            <div className="text-xs space-y-1.5 text-[#e8ece9]">
-              <p>
-                <strong className="text-[#a3b8af]">Name:</strong>{" "}
-                {completedOrder.customer.name}
-              </p>
-              <p>
-                <strong className="text-[#a3b8af]">Phone:</strong>{" "}
-                {completedOrder.customer.phone}
-              </p>
-              <p>
-                <strong className="text-[#a3b8af]">Address:</strong>{" "}
-                {completedOrder.customer.address}
-              </p>
-              <p>
-                <strong className="text-[#a3b8af]">Payment Method:</strong> Cash
-                on Delivery (COD)
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions to continue */}
-        <div className="text-center pt-4">
-          <Link
-            to="/shop"
-            className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#d4af37] via-[#e5c558] to-[#c59e2b] text-[#06140e] text-xs font-bold uppercase tracking-wider rounded-full shadow-[0_0_25px_rgba(212,175,55,0.35)] hover:brightness-110 active:scale-95 transition-all"
-          >
-            <Compass className="w-4 h-4" /> Order More Native Staples
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // VIEW 2: EMPTY BASKET
-  // --------------------------------------------------------------------------
-  if (cart.length === 0) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-6">
-        <div className="w-20 h-20 rounded-full bg-[#0b2319] border border-[#183d2d] flex items-center justify-center text-[#d4af37] mx-auto shadow-[0_0_20px_rgba(212,175,55,0.15)]">
-          <ShoppingBag className="w-9 h-9" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-serif font-bold text-white">
-            Your Basket is Empty
-          </h2>
-          <p className="text-xs text-[#a3b8af]">
-            Explore our unpolished millets, pure forest honey, and cold-pressed
-            oils.
-          </p>
-        </div>
-        <Link
-          to="/shop"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#d4af37] via-[#e5c558] to-[#c59e2b] text-[#06140e] text-xs font-bold uppercase tracking-wider rounded-full shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:brightness-110 transition-all"
-        >
-          Explore Catalog <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // VIEW 3: CART + CASH ON DELIVERY CHECKOUT
-  // --------------------------------------------------------------------------
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#183d2d] pb-5">
-        <div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-normal text-white">
-            Shopping Basket
-          </h1>
-          <p className="text-xs text-[#a3b8af] mt-1">
-            Review selections and provide your delivery location for Cash on
-            Delivery.
-          </p>
-        </div>
-        <Link
-          to="/shop"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#d4af37] hover:text-[#f3e5ab] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> Continue Shopping
-        </Link>
+      <div className="text-center space-y-2 max-w-xl mx-auto">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase bg-[#edf5ef] text-[#2e7d4d] border border-[#cbe1d2]">
+          <PackageCheck className="w-3.5 h-3.5 text-[#2e7d4d]" /> Live Farm
+          Dispatch
+        </span>
+        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-[#162a1e]">
+          Track Your Delivery
+        </h1>
+        <p className="text-xs sm:text-sm text-[#5c7365]">
+          Enter your 6-digit Order ID (e.g. ORG-123456) to monitor packaging and
+          delivery milestones.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Side: Cart Items List */}
-        <div className="lg:col-span-7 bg-[#0b2319] rounded-3xl border border-[#183d2d] p-6 sm:p-8 shadow-xl space-y-6">
-          <div className="flex items-center justify-between border-b border-[#183d2d] pb-4">
-            <h2 className="font-serif text-lg font-bold text-white">
-              Selected Harvest ({totalCartItems})
-            </h2>
-            <span className="text-xs text-[#d4af37] font-semibold">
-              100% Native & Fresh
-            </span>
+      {/* Search Input Box */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#e8e2d5] shadow-sm max-w-2xl mx-auto">
+        <form
+          onSubmit={handleSearch}
+          className="flex flex-col sm:flex-row gap-3"
+        >
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#8e9f93]" />
+            <input
+              type="text"
+              required
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Enter Tracking ID (e.g. ORG-123456)"
+              className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm bg-[#faf7f2] border border-[#dcd4c7] rounded-2xl text-[#162a1e] placeholder-[#8e9f93] focus:outline-none focus:border-[#2e7d4d] font-mono transition-all"
+            />
           </div>
+          <button
+            type="submit"
+            className="px-7 py-3 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider rounded-2xl shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            Track Status
+          </button>
+        </form>
 
-          <div className="divide-y divide-[#183d2d]">
-            {cart.map((item) => (
-              <div
-                key={item.id}
-                className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-0 last:pb-0"
-              >
-                <div className="flex items-center gap-4">
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 rounded-2xl object-cover bg-[#071a12] border border-[#183d2d] shrink-0"
-                    />
-                  )}
-                  <div>
-                    <h3 className="text-sm font-serif font-bold text-white leading-snug">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-[#738d81] mt-0.5">{item.unit}</p>
-                    <span className="text-xs font-bold text-[#d4af37] mt-1 block">
-                      ₹{item.price} each
-                    </span>
-                  </div>
-                </div>
+        {errorMsg && (
+          <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+      </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-5">
-                  <div className="flex items-center gap-2 border border-[#183d2d] bg-[#071a12] rounded-xl p-1">
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.id, -1)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#123325] text-xs font-bold text-[#a3b8af] hover:text-white transition-colors cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center text-xs font-bold text-[#f3e5ab]">
-                      {item.qty}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.id, 1)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#123325] text-xs font-bold text-[#a3b8af] hover:text-white transition-colors cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
+      {/* Searched Order Result */}
+      {searchedOrder && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#eee8dd] pb-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#738d81] block">
+                  Tracking ID
+                </span>
+                <span className="font-mono text-xl font-bold text-[#1b3b27]">
+                  {searchedOrder.trackingId}
+                </span>
+              </div>
+              <span className="self-start sm:self-auto px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#edf5ef] text-[#2e7d4d] border border-[#cbe1d2]">
+                Status: {searchedOrder.status}
+              </span>
+            </div>
 
-                  <span className="text-sm font-serif font-bold text-[#d4af37] min-w-[70px] text-right">
-                    ₹{item.price * item.qty}
+            <TrackingStepper currentStatus={searchedOrder.status} />
+
+            {/* Live Transit Checkpoint (Updated by Dispatch Staff) */}
+            {searchedOrder.dispatchNote && (
+              <div className="p-4 rounded-2xl bg-[#edf5ef] border border-[#cbe1d2] flex items-center gap-3">
+                <MapPin className="w-4 h-4 text-[#2e7d4d] shrink-0" />
+                <div className="text-xs text-[#162a1e]">
+                  <span className="font-bold text-[#1b3b27]">
+                    Transit Checkpoint:{" "}
                   </span>
-
-                  <button
-                    type="button"
-                    onClick={() => removeFromCart(item.id)}
-                    className="text-[#738d81] hover:text-rose-400 p-1 transition-colors cursor-pointer"
-                    title="Remove item"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {searchedOrder.dispatchNote}
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
-          <div className="pt-4 border-t border-[#183d2d] flex justify-between items-center text-sm">
-            <span className="text-[#a3b8af]">Subtotal:</span>
-            <span className="font-serif text-xl font-bold text-[#d4af37]">
-              ₹{totalAmount}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Side: Cash On Delivery Form */}
-        <div className="lg:col-span-5 bg-[#0b2319] rounded-3xl border border-[#183d2d] p-6 sm:p-8 shadow-xl space-y-6">
-          <div className="border-b border-[#183d2d] pb-4">
-            <h2 className="font-serif text-lg font-bold text-white">
-              Delivery Details
-            </h2>
-            <p className="text-xs text-[#a3b8af] mt-0.5">
-              Cash on Delivery (Pay upon arrival)
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#a3b8af] mb-1.5">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Enter recipient full name"
-                value={customer.name}
-                onChange={(e) =>
-                  setCustomer({ ...customer, name: e.target.value })
-                }
-                className="w-full px-4 py-2.5 text-sm rounded-xl bg-[#071a12] border border-[#183d2d] text-[#e8ece9] placeholder-[#738d81] focus:outline-none focus:border-[#d4af37] transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#a3b8af] mb-1.5">
-                Phone Number *
-              </label>
-              <input
-                type="tel"
-                required
-                placeholder="e.g. +91 98765 43210"
-                value={customer.phone}
-                onChange={(e) =>
-                  setCustomer({ ...customer, phone: e.target.value })
-                }
-                className="w-full px-4 py-2.5 text-sm rounded-xl bg-[#071a12] border border-[#183d2d] text-[#e8ece9] placeholder-[#738d81] focus:outline-none focus:border-[#d4af37] transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#a3b8af] mb-1.5">
-                Delivery Address *
-              </label>
-              <textarea
-                required
-                rows="3"
-                placeholder="Door no, street name, landmark, pincode..."
-                value={customer.address}
-                onChange={(e) =>
-                  setCustomer({ ...customer, address: e.target.value })
-                }
-                className="w-full px-4 py-2.5 text-sm rounded-xl bg-[#071a12] border border-[#183d2d] text-[#e8ece9] placeholder-[#738d81] focus:outline-none focus:border-[#d4af37] transition-all resize-none"
-              />
-            </div>
-
-            <div className="bg-[#071a12] p-4 rounded-2xl border border-[#183d2d] space-y-2 text-xs">
-              <div className="flex justify-between text-[#a3b8af]">
-                <span>Items Subtotal</span>
-                <span className="font-semibold text-white">₹{totalAmount}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 shadow-sm space-y-4">
+              <h3 className="text-xs uppercase tracking-widest font-bold text-[#1b3b27]">
+                Ordered Items
+              </h3>
+              <div className="divide-y divide-[#f2ece2]">
+                {searchedOrder.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="py-2.5 flex justify-between items-center text-xs"
+                  >
+                    <span className="text-[#162a1e]">
+                      {item.name}{" "}
+                      <span className="text-[#738d81]">
+                        ({item.unit}) × {item.qty}
+                      </span>
+                    </span>
+                    <span className="font-mono font-bold text-[#162a1e]">
+                      ₹{item.price * item.qty}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between text-[#a3b8af]">
-                <span>Shipping & Packaging</span>
-                <span className="text-[#d4af37] font-semibold">
-                  Free Delivery
-                </span>
-              </div>
-              <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-[#183d2d]">
-                <span>Payable on Delivery</span>
-                <span className="text-[#d4af37] font-serif text-base">
-                  ₹{totalAmount}
+              <div className="pt-2 border-t border-[#eee8dd] flex justify-between items-center text-sm font-bold">
+                <span className="text-[#6d8274]">Total Amount:</span>
+                <span className="font-serif text-lg text-[#1b3b27]">
+                  ₹{searchedOrder.total}
                 </span>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 bg-gradient-to-r from-[#d4af37] via-[#e5c558] to-[#c59e2b] text-[#06140e] text-xs font-bold uppercase tracking-wider rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:brightness-110 active:scale-98 transition-all cursor-pointer"
-            >
-              Confirm & Place Order (₹{totalAmount})
-            </button>
-
-            <p className="flex items-center justify-center gap-1.5 text-[11px] text-[#738d81] pt-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#d4af37]" />
-              No online payment required • Pay after package arrival
-            </p>
-          </form>
+            <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 shadow-sm space-y-3">
+              <h3 className="text-xs uppercase tracking-widest font-bold text-[#1b3b27]">
+                Delivery Details
+              </h3>
+              <div className="text-xs space-y-2 text-[#162a1e]">
+                <p>
+                  <span className="text-[#738d81]">Recipient:</span>{" "}
+                  {searchedOrder.customer?.name}
+                </p>
+                <p>
+                  <span className="text-[#738d81]">Phone:</span>{" "}
+                  {searchedOrder.customer?.phone}
+                </p>
+                <p>
+                  <span className="text-[#738d81]">Address:</span>{" "}
+                  {searchedOrder.customer?.address}
+                </p>
+                <p className="text-[#2e7d4d] font-semibold pt-1">
+                  Payment Method: Cash on Delivery
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="text-center pt-4">
+        <Link
+          to="/shop"
+          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1b3b27] hover:text-[#2e7d4d] transition-colors"
+        >
+          <Compass className="w-4 h-4 text-[#c58f38]" /> Back to Catalog
+        </Link>
       </div>
     </div>
   );

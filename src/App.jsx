@@ -15,7 +15,6 @@ export default function App() {
     <StoreProvider>
       <Router>
         <Routes>
-          {/* Public Storefront */}
           <Route element={<ClientLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/shop" element={<Shop />} />
@@ -23,10 +22,8 @@ export default function App() {
             <Route path="/track" element={<TrackOrder />} />
           </Route>
 
-          {/* Standalone Admin Portal */}
           <Route path="/admin" element={<AdminLogin />} />
 
-          {/* Fallback */}
           <Route path="*" element={<Home />} />
         </Routes>
       </Router>

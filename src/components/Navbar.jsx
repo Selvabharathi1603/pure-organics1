@@ -11,35 +11,35 @@ export default function Navbar() {
   );
 
   const navLinkClass = ({ isActive }) =>
-    `px-4 py-2 text-xs uppercase tracking-widest font-semibold rounded-full transition-all duration-200 ${
+    `px-4 py-2 text-xs uppercase tracking-widest font-semibold rounded-full transition-all duration-200 cursor-pointer ${
       isActive
-        ? "bg-[#d4af37]/15 text-[#f3e5ab] border border-[#d4af37]/40 shadow-[0_0_15px_rgba(212,175,55,0.15)]"
-        : "text-[#a3b8af] hover:text-[#f3e5ab] hover:bg-[#0f2c20]"
+        ? "bg-[#1b3b27] text-[#ffffff] shadow-sm"
+        : "text-[#4d6355] hover:text-[#1b3b27] hover:bg-[#eef4ef]"
     }`;
 
   return (
     <div className="sticky top-4 z-40 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full transition-all">
-      <header className="backdrop-blur-xl bg-[#091f16]/85 border border-[#1d4131] shadow-2xl shadow-black/60 rounded-full px-5 py-3 flex items-center justify-between gap-4">
+      <header className="backdrop-blur-md bg-white/90 border border-[#e4ded3] shadow-[0_10px_30px_rgba(27,59,39,0.06)] rounded-full px-5 py-3 flex items-center justify-between gap-4">
         {/* Brand Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-full bg-[#0d2e21] border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] group-hover:scale-105 transition-transform duration-300 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-            <Sprout className="w-4 h-4" />
+        <Link to="/" className="flex items-center gap-2.5 group cursor-pointer">
+          <div className="w-10 h-10 rounded-full bg-[#edf5ef] border border-[#cbe1d2] flex items-center justify-center text-[#1b3b27] group-hover:bg-[#1b3b27] group-hover:text-white transition-all duration-300 shadow-sm">
+            <Sprout className="w-5 h-5" />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif text-lg tracking-tight text-[#fbfaf6] font-bold leading-none">
+            <span className="font-serif text-xl tracking-tight text-[#162a1e] font-bold leading-none">
               Pure
-              <span className="italic font-normal text-[#d4af37]">
+              <span className="italic font-normal text-[#2e7d4d] ml-1">
                 Organics
               </span>
             </span>
-            <span className="text-[9px] uppercase tracking-widest text-[#d4af37]/80 font-semibold mt-0.5">
+            <span className="text-[9px] uppercase tracking-widest text-[#849a8d] font-semibold mt-0.5 font-mono">
               Native Harvest
             </span>
           </div>
         </Link>
 
-        {/* Floating Capsule Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-[#061710]/90 p-1 rounded-full border border-[#163527]">
+        {/* Navigation Pills */}
+        <nav className="hidden md:flex items-center gap-1 bg-[#f4f1ea] p-1 rounded-full border border-[#e5dfd3]">
           <NavLink to="/" className={navLinkClass}>
             Home
           </NavLink>
@@ -51,16 +51,17 @@ export default function Navbar() {
           </NavLink>
         </nav>
 
-        {/* Cart Trigger */}
+        {/* Cart Trigger Button */}
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={openCart}
-            className="group relative inline-flex items-center gap-2.5 bg-gradient-to-r from-[#d4af37] via-[#e5c558] to-[#c59e2b] text-[#06140e] text-xs font-bold px-4 py-2.5 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:brightness-110 transition-all duration-300 cursor-pointer active:scale-95"
+            className="group relative inline-flex items-center gap-2.5 bg-[#1b3b27] hover:bg-[#245236] text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-[0_4px_14px_rgba(27,59,39,0.2)] hover:shadow-[0_6px_20px_rgba(27,59,39,0.28)] transition-all duration-300 cursor-pointer active:scale-95"
+            aria-label="View shopping bag"
           >
-            <ShoppingBag className="w-3.5 h-3.5 text-[#06140e] transition-transform group-hover:-translate-y-0.5" />
+            <ShoppingBag className="w-3.5 h-3.5 text-[#f4e3b2] transition-transform group-hover:-translate-y-0.5" />
             <span className="tracking-wide uppercase text-[11px]">Bag</span>
-            <span className="bg-[#06140e] text-[#f3e5ab] text-[10px] px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-[#c58f38] text-[#162a1e] text-[10px] px-2 py-0.5 rounded-full font-bold font-mono">
               {totalCartItems}
             </span>
           </button>
