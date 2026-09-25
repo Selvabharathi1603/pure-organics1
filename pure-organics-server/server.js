@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" })); // Supports image URLs and JSON payloads
 
-// MySQL connection pool
+// MySQL connection pool with multipleStatements enabled for analytics
 const db = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
@@ -16,9 +16,10 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  multipleStatements: true, // Enables batch queries for admin analytics
 });
 
-// Verify connection & ensure lead/newsletter tables exist
+// Verify connection & ensure required tables exist
 db.getConnection((err, conn) => {
   if (err) {
     console.error("❌ MySQL Connection Failed:", err.message);
@@ -42,6 +43,16 @@ db.getConnection((err, conn) => {
         dob DATE NULL,
         coupon_code VARCHAR(50) DEFAULT 'HARVEST10',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Auto-create search & filter analytics table if not exists
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS search_analytics (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        query_term VARCHAR(100) NOT NULL,
+        filter_category VARCHAR(50) DEFAULT 'All',
+        searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -72,7 +83,7 @@ app.post("/api/products", (req, res) => {
   });
 });
 
-// Update Existing Product Details (Price, Unit, Image, etc.)
+// Update Existing Product Details
 app.put("/api/products/:id", (req, res) => {
   const { id } = req.params;
   const { name, category, price, unit, image, description } = req.body;
@@ -244,7 +255,58 @@ app.get("/api/leads", (req, res) => {
 });
 
 // ==========================================
-// 5. SUPER ADMIN ANALYTICS ROUTE
+// 5. SEARCH & FILTER ANALYTICS ROUTES
+// ==========================================
+
+// Log live user search queries & selected category filters from /shop
+app.post("/api/analytics/search", (req, res) => {
+  const { query_term, filter_category } = req.body;
+  const term = (query_term || "").trim().toLowerCase();
+  const category = (filter_category || "All").trim();
+
+  if (!term && category === "All") {
+    return res.status(200).json({ message: "Default view ignored" });
+  }
+
+  const sql = "INSERT INTO search_analytics (query_term, filter_category) VALUES (?, ?)";
+  db.query(sql, [term, category], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ success: true });
+  });
+});
+
+// Fetch top searched keywords & most clicked category filters for Super Admin
+app.get("/api/admin/search-insights", (req, res) => {
+  const queries = `
+    SELECT query_term, COUNT(*) AS count 
+    FROM search_analytics 
+    WHERE query_term != '' 
+    GROUP BY query_term 
+    ORDER BY count DESC 
+    LIMIT 6;
+
+    SELECT filter_category, COUNT(*) AS count 
+    FROM search_analytics 
+    WHERE filter_category != 'All' 
+    GROUP BY filter_category 
+    ORDER BY count DESC 
+    LIMIT 6;
+  `;
+
+  db.query(queries, (err, results) => {
+    if (err) {
+      console.error("Search Analytics Query Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({
+      topKeywords: results[0] || [],
+      topCategories: results[1] || [],
+    });
+  });
+});
+
+// ==========================================
+// 6. SUPER ADMIN ANALYTICS ROUTE
 // ==========================================
 
 app.get("/api/admin/analytics", (req, res) => {
@@ -258,7 +320,10 @@ app.get("/api/admin/analytics", (req, res) => {
   `;
 
   db.query(queries, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error("Analytics Query Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
     res.json({
       orders: results[0][0],
       products: results[1][0],
@@ -267,7 +332,7 @@ app.get("/api/admin/analytics", (req, res) => {
 });
 
 // ==========================================
-// 6. AUTH ROUTE
+// 7. AUTH ROUTE
 // ==========================================
 
 app.post("/api/auth/login", (req, res) => {
