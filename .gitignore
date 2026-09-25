@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+pure-organics-server/node_modules
+
+pure-organics-server/.env

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Trash2,
   LogOut,
@@ -6,13 +6,13 @@ import {
   Bell,
   CheckCircle2,
   Save,
-  DollarSign,
-  TrendingUp,
-  AlertTriangle,
-  PackageCheck,
   PlusCircle,
-  Edit3,
   X,
+  Mail,
+  Cake,
+  MessageCircle,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 
@@ -56,6 +56,14 @@ export default function AdminDashboard({ onLogout }) {
 
   const [activeCmsSection, setActiveCmsSection] = useState("announcements");
   const [saveToast, setSaveToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState(
+    "Successfully Updated in MySQL Database!",
+  );
+
+  // Marketing Data States (Subscribers & Birthday Leads)
+  const [subscribers, setSubscribers] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [copiedEmails, setCopiedEmails] = useState(false);
 
   // Local Form States
   const [announcementForm, setAnnouncementForm] = useState(
@@ -109,7 +117,29 @@ export default function AdminDashboard({ onLogout }) {
 
   const [editingProduct, setEditingProduct] = useState(null);
 
-  const triggerToast = () => {
+  // Fetch Marketing Leads on Mount
+  const fetchMarketingData = () => {
+    fetch("http://localhost:5000/api/newsletter")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setSubscribers(data);
+      })
+      .catch((err) => console.warn(err));
+
+    fetch("http://localhost:5000/api/leads")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setLeads(data);
+      })
+      .catch((err) => console.warn(err));
+  };
+
+  useEffect(() => {
+    fetchMarketingData();
+  }, []);
+
+  const triggerToast = (msg = "Successfully Updated in MySQL Database!") => {
+    setToastMessage(msg);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2500);
   };
@@ -126,12 +156,48 @@ export default function AdminDashboard({ onLogout }) {
     }
   };
 
+  // Product Edit Submission Handler to MySQL
+  const handleSaveProductEdit = async () => {
+    if (!editingProduct) return;
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/products/${editingProduct.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editingProduct),
+        },
+      );
+
+      if (res.ok) {
+        setEditingProduct(null);
+        triggerToast("Product details updated in catalog!");
+        // Refresh products list
+        window.location.reload();
+      } else {
+        alert("Failed to update product in database.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error reaching server.");
+    }
+  };
+
+  const copyAllEmails = () => {
+    const emailList = subscribers.map((s) => s.email).join(", ");
+    navigator.clipboard.writeText(emailList);
+    setCopiedEmails(true);
+    setTimeout(() => setCopiedEmails(false), 2000);
+  };
+
   // Analytics Metrics
   const totalRevenue =
     orders.reduce((sum, o) => sum + (o.total || 0), 0) + 5475;
   const outOfStockItems = products.filter((p) => p.inStock === false);
   const avgOrderValue =
     orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
+
+  const todaysBirthdays = leads.filter((l) => l.is_birthday_today === 1);
 
   return (
     <div className="min-h-screen bg-[#faf7f2] text-[#162a1e] py-10 px-4 sm:px-6 lg:px-8 font-sans">
@@ -140,7 +206,7 @@ export default function AdminDashboard({ onLogout }) {
         <div className="fixed top-6 right-6 z-50 bg-[#1b3b27] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-[#fbbf24]/50 animate-bounce">
           <CheckCircle2 className="w-5 h-5 text-[#fbbf24]" />
           <span className="text-xs font-bold uppercase tracking-wider">
-            Successfully Updated in MySQL Database!
+            {toastMessage}
           </span>
         </div>
       )}
@@ -208,7 +274,7 @@ export default function AdminDashboard({ onLogout }) {
                   : "bg-white text-[#516859] border border-[#dcd4c7] hover:bg-[#edf5ef]"
               }`}
             >
-              📦 Inventory & Out-of-Stock ({products.length})
+              📦 Inventory & Catalog ({products.length})
             </button>
           )}
 
@@ -269,59 +335,147 @@ export default function AdminDashboard({ onLogout }) {
               </div>
             </div>
 
-            {/* Farm Performance Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* LIVE MARKETING & BIRTHDAY DISK */}
+            {todaysBirthdays.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 p-6 rounded-3xl space-y-3">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                  <Cake className="w-5 h-5 text-amber-600 animate-bounce" />
+                  <span>
+                    🎉 {todaysBirthdays.length} Customer(s) Have Their Birthday
+                    Today!
+                  </span>
+                </div>
+                <p className="text-xs text-amber-800">
+                  Send their personalized birthday harvest discount directly to
+                  their WhatsApp:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                  {todaysBirthdays.map((b) => (
+                    <div
+                      key={b.id}
+                      className="bg-white p-3.5 rounded-2xl border border-amber-200 flex items-center justify-between shadow-xs"
+                    >
+                      <div>
+                        <p className="font-mono font-bold text-xs text-[#162a1e]">
+                          +91 {b.phone}
+                        </p>
+                        <p className="text-[10px] text-amber-700 font-semibold">
+                          Special Coupon: BDAY20
+                        </p>
+                      </div>
+                      <a
+                        href={`https://wa.me/91${b.phone}?text=Dear%20Valued%20Customer,%20Warmest%20birthday%20greetings%20from%20the%20Pure%20Organics%20farm%20family!%20%F0%9F%8E%82%20Enjoy%20a%20special%2020%25%20birthday%20harvest%20discount%20using%20coupon:%20BDAY20`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#1ebd5a] text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" /> Wish
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Newsletter & Leads Overview Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Newsletter Subscribers Table */}
               <div className="bg-white p-6 rounded-3xl border border-[#e8e2d5] shadow-xs space-y-4">
-                <h3 className="font-serif font-bold text-sm text-[#14281b]">
-                  Sales Share by Harvest Category
-                </h3>
-                <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between border-b border-[#eee8dd] pb-3">
                   <div>
-                    <div className="flex justify-between font-semibold mb-1">
-                      <span>Wood-Pressed Oils</span>
-                      <span>48%</span>
-                    </div>
-                    <div className="w-full bg-[#f0ece1] h-2 rounded-full overflow-hidden">
-                      <div className="bg-[#1b3b27] h-full w-[48%]" />
-                    </div>
+                    <h3 className="font-serif font-bold text-base text-[#162a1e] flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-[#2e7d4d]" /> Newsletter
+                      Subscribers ({subscribers.length})
+                    </h3>
+                    <p className="text-xs text-[#6d8274]">
+                      Emails captured from footer subscription bar
+                    </p>
                   </div>
-                  <div>
-                    <div className="flex justify-between font-semibold mb-1">
-                      <span>Native Millets & Heirloom Rice</span>
-                      <span>32%</span>
+                  {subscribers.length > 0 && (
+                    <button
+                      onClick={copyAllEmails}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#faf7f2] hover:bg-[#edf5ef] border border-[#dcd4c7] text-[#1b3b27] text-xs font-bold rounded-xl transition-all cursor-pointer"
+                    >
+                      {copiedEmails ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      {copiedEmails ? "Copied!" : "Copy All"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-[#eee8dd] text-xs">
+                  {subscribers.map((s) => (
+                    <div
+                      key={s.id}
+                      className="py-2.5 flex justify-between items-center text-[#516859]"
+                    >
+                      <span className="font-medium text-[#162a1e]">
+                        {s.email}
+                      </span>
+                      <span className="text-[11px] text-stone-400">
+                        {new Date(s.subscribed_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
                     </div>
-                    <div className="w-full bg-[#f0ece1] h-2 rounded-full overflow-hidden">
-                      <div className="bg-[#2e7d4d] h-full w-[32%]" />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between font-semibold mb-1">
-                      <span>Raw Honey & Palm Jaggery</span>
-                      <span>20%</span>
-                    </div>
-                    <div className="w-full bg-[#f0ece1] h-2 rounded-full overflow-hidden">
-                      <div className="bg-[#f59e0b] h-full w-[20%]" />
-                    </div>
-                  </div>
+                  ))}
+                  {subscribers.length === 0 && (
+                    <p className="text-center py-6 text-stone-400 italic">
+                      No newsletter subscribers yet.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-[#e8e2d5] shadow-xs space-y-3">
-                <h3 className="font-serif font-bold text-sm text-[#14281b]">
-                  Owner Action Desk
-                </h3>
-                <p className="text-xs text-[#526656] leading-relaxed">
-                  All homepage promotional campaigns, cold-pressed batch
-                  notifications, and logistics pipelines are synchronized
-                  directly with your MySQL database.
-                </p>
-                <div className="pt-2 flex flex-wrap gap-2 text-xs">
-                  <span className="px-3 py-1 bg-[#f0fdf4] text-[#166534] rounded-full border border-[#bbf7d0] font-bold">
-                    ✓ MySQL Database Live
-                  </span>
-                  <span className="px-3 py-1 bg-[#fefce8] text-[#854d0e] rounded-full border border-[#fef08a] font-bold">
-                    ✓ Real-time Sync Active
-                  </span>
+              {/* Birthday Leads Table */}
+              <div className="bg-white p-6 rounded-3xl border border-[#e8e2d5] shadow-xs space-y-4">
+                <div className="border-b border-[#eee8dd] pb-3">
+                  <h3 className="font-serif font-bold text-base text-[#162a1e] flex items-center gap-2">
+                    <Cake className="w-4 h-4 text-[#d97706]" /> Customer
+                    Birthday Leads ({leads.length})
+                  </h3>
+                  <p className="text-xs text-[#6d8274]">
+                    Captured via the Welcome Discount Modal
+                  </p>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-[#eee8dd] text-xs">
+                  {leads.map((l) => (
+                    <div
+                      key={l.id}
+                      className="py-2.5 flex justify-between items-center text-[#516859]"
+                    >
+                      <div>
+                        <span className="font-mono font-bold text-[#1b3b27] block">
+                          +91 {l.phone}
+                        </span>
+                        <span className="text-[10px] text-[#738d81]">
+                          Coupon: {l.coupon_code}
+                        </span>
+                      </div>
+                      <div>
+                        {l.dob ? (
+                          <span className="bg-[#fef3c7] text-[#b45309] px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                            🎂 {l.dob}
+                          </span>
+                        ) : (
+                          <span className="text-stone-400 italic text-[11px]">
+                            No DOB given
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {leads.length === 0 && (
+                    <p className="text-center py-6 text-stone-400 italic">
+                      No birthday leads recorded yet.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1090,7 +1244,7 @@ export default function AdminDashboard({ onLogout }) {
                     image: "",
                     description: "",
                   });
-                  triggerToast();
+                  triggerToast("New product saved to MySQL!");
                 }}
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs"
               >
@@ -1364,6 +1518,28 @@ export default function AdminDashboard({ onLogout }) {
                       />
                     </div>
 
+                    <div>
+                      <label className="font-bold block mb-1">Category</label>
+                      <select
+                        value={editingProduct.category}
+                        onChange={(e) =>
+                          setEditingProduct({
+                            ...editingProduct,
+                            category: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border rounded-xl bg-[#faf7f2] font-semibold"
+                      >
+                        <option value="Cold-Pressed Oils">
+                          Cold-Pressed Oils
+                        </option>
+                        <option value="Millets & Grains">
+                          Millets & Grains
+                        </option>
+                        <option value="Groceries">Groceries</option>
+                      </select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="font-bold block mb-1">
@@ -1443,13 +1619,10 @@ export default function AdminDashboard({ onLogout }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setEditingProduct(null);
-                        triggerToast();
-                      }}
+                      onClick={handleSaveProductEdit}
                       className="px-5 py-2 rounded-xl font-bold bg-[#1b3b27] text-white hover:bg-[#255236] cursor-pointer"
                     >
-                      Save Changes
+                      Save Changes to MySQL
                     </button>
                   </div>
                 </div>
