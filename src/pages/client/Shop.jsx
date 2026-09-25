@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Sparkles, ShoppingBag, Check, ArrowLeft } from "lucide-react";
+import {
+  Sparkles,
+  ShoppingBag,
+  Check,
+  ArrowLeft,
+  Search,
+  ArrowUpDown,
+  X,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useStore } from "../../context/storecontext";
 
 const CATEGORY_TABS = [
@@ -21,6 +30,8 @@ export default function Shop() {
 
   const categoryFromUrl = searchParams.get("category") || "All";
   const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("bestseller"); // bestseller | price-low | price-high | name
   const [addedId, setAddedId] = useState(null);
 
   useEffect(() => {
@@ -28,6 +39,24 @@ export default function Shop() {
       setSelectedCategory(categoryFromUrl);
     }
   }, [categoryFromUrl]);
+
+  // Log searches and category filter usage to MySQL backend with 800ms debounce
+  useEffect(() => {
+    if (!searchTerm.trim() && selectedCategory === "All") return;
+
+    const timer = setTimeout(() => {
+      fetch("http://localhost:5000/api/analytics/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query_term: searchTerm.trim(),
+          filter_category: selectedCategory,
+        }),
+      }).catch((err) => console.warn("Search analytics logger error:", err));
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, selectedCategory]);
 
   const handleCategoryChange = (query) => {
     setSelectedCategory(query);
@@ -39,60 +68,99 @@ export default function Shop() {
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    if (!selectedCategory || selectedCategory === "All") return true;
+  // Combined Search, Category Filter, and Sorting Logic
+  const filteredProducts = useMemo(() => {
+    let result = products.filter((product) => {
+      const term = selectedCategory.toLowerCase();
+      const name = product.name?.toLowerCase() || "";
+      const cat = product.category?.toLowerCase() || "";
+      const desc = product.description?.toLowerCase() || "";
 
-    const term = selectedCategory.toLowerCase();
-    const name = product.name?.toLowerCase() || "";
-    const cat = product.category?.toLowerCase() || "";
-    const desc = product.description?.toLowerCase() || "";
+      // 1. Category Matching (Preserved exact lineage filters)
+      let matchesCategory = true;
+      if (selectedCategory && selectedCategory !== "All") {
+        if (term === "oil")
+          matchesCategory = name.includes("oil") || cat.includes("oil");
+        else if (term === "ghee")
+          matchesCategory = name.includes("ghee") || desc.includes("ghee");
+        else if (term === "millets") {
+          matchesCategory =
+            cat.includes("millet") ||
+            name.includes("millet") ||
+            name.includes("kuthiraivali") ||
+            name.includes("thinai") ||
+            name.includes("samai") ||
+            name.includes("varagu") ||
+            name.includes("ragi") ||
+            name.includes("kambu");
+        } else if (term === "rice")
+          matchesCategory = name.includes("rice") || desc.includes("rice");
+        else if (term === "flour") {
+          matchesCategory =
+            name.includes("flour") ||
+            name.includes("atta") ||
+            desc.includes("flour");
+        } else if (term === "breakfast") {
+          matchesCategory =
+            name.includes("aval") ||
+            name.includes("flake") ||
+            name.includes("sugar") ||
+            name.includes("honey") ||
+            name.includes("jaggery");
+        } else if (term === "pickles") {
+          matchesCategory =
+            name.includes("sundakkai") ||
+            name.includes("pickle") ||
+            desc.includes("berry");
+        } else if (term === "dryfruits") {
+          matchesCategory =
+            name.includes("nut") ||
+            name.includes("fruit") ||
+            name.includes("seed");
+        } else {
+          matchesCategory = name.includes(term) || cat.includes(term);
+        }
+      }
 
-    if (term === "oil") return name.includes("oil") || cat.includes("oil");
-    if (term === "ghee") return name.includes("ghee") || desc.includes("ghee");
-    if (term === "millets") {
-      return (
-        cat.includes("millet") ||
-        name.includes("millet") ||
-        name.includes("kuthiraivali") ||
-        name.includes("thinai") ||
-        name.includes("samai") ||
-        name.includes("varagu") ||
-        name.includes("ragi") ||
-        name.includes("kambu")
-      );
-    }
-    if (term === "rice") return name.includes("rice") || desc.includes("rice");
-    if (term === "flour") {
-      return (
-        name.includes("flour") ||
-        name.includes("atta") ||
-        desc.includes("flour")
-      );
-    }
-    if (term === "breakfast") {
-      return (
-        name.includes("aval") ||
-        name.includes("flake") ||
-        name.includes("sugar") ||
-        name.includes("honey") ||
-        name.includes("jaggery")
-      );
-    }
-    if (term === "pickles") {
-      return (
-        name.includes("sundakkai") ||
-        name.includes("pickle") ||
-        desc.includes("berry")
-      );
-    }
-    if (term === "dryfruits") {
-      return (
-        name.includes("nut") || name.includes("fruit") || name.includes("seed")
-      );
+      if (!matchesCategory) return false;
+
+      // 2. Keyword Search Query Matching
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const matchesQuery =
+          name.includes(q) ||
+          cat.includes(q) ||
+          desc.includes(q) ||
+          (product.unit && product.unit.toLowerCase().includes(q));
+        if (!matchesQuery) return false;
+      }
+
+      return true;
+    });
+
+    // 3. Sorting Execution
+    switch (sortBy) {
+      case "price-low":
+        result.sort((a, b) => Number(a.price) - Number(b.price));
+        break;
+      case "price-high":
+        result.sort((a, b) => Number(b.price) - Number(a.price));
+        break;
+      case "name":
+        result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        break;
+      case "bestseller":
+      default:
+        // Shows in-stock items first, followed by default store ID order
+        result.sort(
+          (a, b) =>
+            (b.inStock !== false ? 1 : 0) - (a.inStock !== false ? 1 : 0),
+        );
+        break;
     }
 
-    return name.includes(term) || cat.includes(term);
-  });
+    return result;
+  }, [products, selectedCategory, searchTerm, sortBy]);
 
   const handleAddToCart = (product) => {
     addToCart(product);
@@ -116,30 +184,71 @@ export default function Shop() {
         </p>
       </div>
 
-      {/* 2. Category Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none justify-start md:justify-center">
-        {CATEGORY_TABS.map((tab) => {
-          const isSelected =
-            selectedCategory.toLowerCase() === tab.query.toLowerCase();
+      {/* 2. Control Hub: Live Search Bar & Sort Dropdown */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#e8e2d5] shadow-xs space-y-4">
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by harvest name, oil, or crop (e.g., Vaagai, Karuppu Kavuni, Honey)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-10 py-3 text-xs sm:text-sm rounded-2xl bg-[#faf7f2] border border-[#dcd4c7] text-[#162a1e] focus:outline-none focus:border-[#1b3b27] transition-all"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleCategoryChange(tab.query)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
-                isSelected
-                  ? "bg-[#1b3b27] text-white shadow-sm scale-105"
-                  : "bg-white text-[#4d6355] border border-[#e4ded3] hover:border-[#2e7d4d] hover:text-[#1b3b27]"
-              }`}
+          {/* Sort Selector */}
+          <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+            <ArrowUpDown className="w-4 h-4 text-[#1b3b27]" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full md:w-auto px-4 py-3 text-xs sm:text-sm rounded-2xl bg-[#faf7f2] border border-[#dcd4c7] font-semibold text-[#1b3b27] focus:outline-none focus:border-[#1b3b27] cursor-pointer"
             >
-              {tab.name}
-            </button>
-          );
-        })}
+              <option value="bestseller">Sort by: Fresh & Bestsellers</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="name">Alphabetical (A - Z)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 3. Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none justify-start md:justify-center pt-1 border-t border-[#f2ece2]">
+          {CATEGORY_TABS.map((tab) => {
+            const isSelected =
+              selectedCategory.toLowerCase() === tab.query.toLowerCase();
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleCategoryChange(tab.query)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                  isSelected
+                    ? "bg-[#1b3b27] text-white shadow-sm scale-105"
+                    : "bg-[#faf7f2] text-[#4d6355] border border-[#e4ded3] hover:border-[#2e7d4d] hover:text-[#1b3b27]"
+                }`}
+              >
+                {tab.name}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* 3. Section Title Bar */}
+      {/* 4. Section Title Bar */}
       <div className="flex items-center justify-between border-b border-[#e8e2d5] pb-4">
         <div>
           <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#162a1e]">
@@ -149,21 +258,25 @@ export default function Shop() {
           </h2>
           <p className="text-xs text-[#6d8274] mt-0.5">
             Showing {filteredProducts.length} items
+            {searchTerm && ` matching "${searchTerm}"`}
           </p>
         </div>
 
-        {selectedCategory !== "All" && (
+        {(selectedCategory !== "All" || searchTerm) && (
           <button
             type="button"
-            onClick={() => handleCategoryChange("All")}
+            onClick={() => {
+              handleCategoryChange("All");
+              setSearchTerm("");
+            }}
             className="inline-flex items-center gap-1 text-xs font-semibold text-[#1b3b27] hover:text-[#2e7d4d] transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Show All Products
+            <ArrowLeft className="w-3.5 h-3.5" /> Reset Filters
           </button>
         )}
       </div>
 
-      {/* 4. Products Grid */}
+      {/* 5. Products Grid */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product) => (
@@ -182,9 +295,16 @@ export default function Shop() {
                 <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#1b3b27] border border-[#dce7df]">
                   {product.category}
                 </span>
-                <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-md text-[#162a1e] border border-[#dce7df] flex items-center gap-1">
-                  <span className="text-[#c58f38]">★</span> {product.rating}
-                </span>
+                {product.inStock === false ? (
+                  <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-600 text-white shadow-xs">
+                    Out of Stock
+                  </span>
+                ) : (
+                  <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-md text-[#162a1e] border border-[#dce7df] flex items-center gap-1">
+                    <span className="text-[#c58f38]">★</span>{" "}
+                    {product.rating || "4.9"}
+                  </span>
+                )}
               </div>
 
               {/* Product Info */}
@@ -215,7 +335,8 @@ export default function Shop() {
                   <button
                     type="button"
                     onClick={() => handleAddToCart(product)}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    disabled={product.inStock === false}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                       addedId === product.id
                         ? "bg-[#2e7d4d] text-white"
                         : "bg-[#1b3b27] hover:bg-[#255236] text-white shadow-sm"
@@ -228,7 +349,7 @@ export default function Shop() {
                     ) : (
                       <>
                         <ShoppingBag className="w-3.5 h-3.5 text-[#f4e3b2]" />{" "}
-                        Add
+                        {product.inStock === false ? "Sold Out" : "Add"}
                       </>
                     )}
                   </button>
@@ -239,15 +360,22 @@ export default function Shop() {
         </div>
       ) : (
         <div className="bg-white border border-[#e8e2d5] rounded-3xl p-12 text-center space-y-4 shadow-sm">
+          <SlidersHorizontal className="w-10 h-10 text-stone-300 mx-auto" />
+          <h3 className="font-serif text-lg font-bold text-[#162a1e]">
+            No Harvest Items Found
+          </h3>
           <p className="text-sm text-[#5c7365]">
-            No harvest items currently listed under "{selectedCategory}".
+            No products matched your search "{searchTerm || selectedCategory}".
           </p>
           <button
             type="button"
-            onClick={() => handleCategoryChange("All")}
+            onClick={() => {
+              handleCategoryChange("All");
+              setSearchTerm("");
+            }}
             className="px-6 py-2.5 rounded-xl bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
           >
-            View All Products
+            Reset Filters & View All
           </button>
         </div>
       )}

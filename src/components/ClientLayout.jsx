@@ -18,7 +18,7 @@ export default function ClientLayout() {
       if (!alreadyClosed) {
         setIsDiscountOpen(true);
       }
-    }, 2500);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);

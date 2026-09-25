@@ -39,7 +39,6 @@ export const ADMIN_USERS = [
   },
 ];
 
-// Fallback configurations for initial load while MySQL fetches
 const DEFAULT_ANNOUNCEMENTS = {
   bannerText: "FLAT 50% OFF ON OUR PURE ORGANIC BESTSELLERS",
   badgeText: "Harvest Special",
@@ -229,10 +228,14 @@ const DEFAULT_TESTIMONIALS = {
 
 const DEFAULT_DISCOUNT_CONFIG = {
   enabled: true,
-  title: "Get 10% Off Your First Harvest",
-  subtitle: "Subscribe to fresh seasonal milling updates and farm dispatches.",
-  couponCode: "NATIVE10",
-  buttonText: "Claim Farm Discount",
+  badge: "New Harvest Welcome",
+  headline: "Unlock ₹100 off on your first order",
+  subtext:
+    "Share your birth date to receive seasonal birthday harvest surprises 🌱",
+  image:
+    "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+  couponCode: "HARVEST10",
+  buttonText: "Claim Harvest Discount",
 };
 
 const DEFAULT_FOOTER_CONFIG = {
@@ -252,6 +255,11 @@ export const StoreProvider = ({ children }) => {
   );
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [analytics, setAnalytics] = useState({
+    orders: { totalOrders: 0, totalRevenue: 0 },
+    products: { totalProducts: 0, inStockCount: 0, outOfStockCount: 0 },
+  });
   const [stockAlerts, setStockAlerts] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -265,7 +273,7 @@ export const StoreProvider = ({ children }) => {
     }
   });
 
-  // CMS Section States (Initialized with fallbacks, replaced live from MySQL)
+  // CMS Section States
   const [announcements, setAnnouncements] = useState(DEFAULT_ANNOUNCEMENTS);
   const [heroSlides, setHeroSlides] = useState(DEFAULT_HERO_SLIDES);
   const [healthGoals, setHealthGoals] = useState(DEFAULT_HEALTH_GOALS);
@@ -326,7 +334,37 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 3. Fetch Full Homepage CMS from MySQL
+  // 3. Fetch Leads (Discount Modal submissions) from MySQL
+  const fetchLeads = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/leads`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setLeads(data);
+        }
+      }
+    } catch (err) {
+      console.warn("Backend not reached for leads:", err);
+    }
+  };
+
+  // 4. Fetch Analytics from MySQL
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/analytics`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && data.products) {
+          setAnalytics(data);
+        }
+      }
+    } catch (err) {
+      console.warn("Backend not reached for analytics:", err);
+    }
+  };
+
+  // 5. Fetch Full Homepage CMS from MySQL
   const fetchHomepageCMS = async () => {
     try {
       const res = await fetch(`${API_BASE}/cms/homepage`);
@@ -345,10 +383,12 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // Initial Load
+  // Initial Load of all backend data
   useEffect(() => {
     fetchProducts();
     fetchOrders();
+    fetchLeads();
+    fetchAnalytics();
     fetchHomepageCMS();
   }, []);
 
@@ -366,7 +406,6 @@ export const StoreProvider = ({ children }) => {
 
   // Master CMS Update Function: Updates state and persists to MySQL
   const saveCMSSection = async (sectionKey, newContent) => {
-    // 1. Optimistic UI update
     switch (sectionKey) {
       case "announcement":
         setAnnouncements(newContent);
@@ -393,7 +432,6 @@ export const StoreProvider = ({ children }) => {
         break;
     }
 
-    // 2. Persist to MySQL via PUT /api/cms/homepage/:sectionKey
     try {
       const res = await fetch(`${API_BASE}/cms/homepage/${sectionKey}`, {
         method: "PUT",
@@ -403,6 +441,29 @@ export const StoreProvider = ({ children }) => {
       return res.ok;
     } catch (err) {
       console.error(`Failed to save section '${sectionKey}' to MySQL:`, err);
+      return false;
+    }
+  };
+
+  // Add Lead Function: Called by DiscountModal
+  const addLead = async (formData) => {
+    try {
+      const res = await fetch(`${API_BASE}/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: formData.phone,
+          dob: formData.dob || null,
+          coupon_code: discountConfig.couponCode || "HARVEST10",
+        }),
+      });
+      if (res.ok) {
+        await fetchLeads();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Failed to add lead:", err);
       return false;
     }
   };
@@ -485,7 +546,7 @@ export const StoreProvider = ({ children }) => {
 
   const clearCart = () => setCart([]);
 
-  // Place Order: Saves to MySQL
+  // Place Order: Saves to MySQL and refreshes analytics
   const placeOrder = async (customerDetails) => {
     const trackingId = "ORG-" + Math.floor(100000 + Math.random() * 900000);
     const totalAmount = cart.reduce(
@@ -509,7 +570,10 @@ export const StoreProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderPayload),
       });
-      if (res.ok) fetchOrders();
+      if (res.ok) {
+        await fetchOrders();
+        await fetchAnalytics();
+      }
     } catch (err) {
       console.warn("Backend order write failed:", err);
     }
@@ -542,7 +606,10 @@ export const StoreProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newProduct),
       });
-      if (res.ok) fetchProducts();
+      if (res.ok) {
+        await fetchProducts();
+        await fetchAnalytics();
+      }
     } catch (err) {
       console.warn("Backend add product failed:", err);
     }
@@ -553,7 +620,6 @@ export const StoreProvider = ({ children }) => {
     if (!product) return;
     const newStock = !product.inStock;
 
-    // Optimistic UI update
     setProducts((prev) =>
       prev.map((p) => (p.id === id ? { ...p, inStock: newStock } : p)),
     );
@@ -564,13 +630,21 @@ export const StoreProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ in_stock: newStock }),
       });
+      await fetchAnalytics();
     } catch (err) {
       console.warn("Backend stock toggle failed:", err);
     }
   };
 
-  const deleteProduct = (id) =>
+  const deleteProduct = async (id) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await fetch(`${API_BASE}/products/${id}`, { method: "DELETE" });
+      await fetchAnalytics();
+    } catch (err) {
+      console.warn("Backend delete product failed:", err);
+    }
+  };
 
   const sendStockAlert = (productName, message) => {
     const newAlert = {
@@ -628,11 +702,13 @@ export const StoreProvider = ({ children }) => {
         products,
         cart,
         orders,
+        leads,
+        analytics,
         stockAlerts,
         currentAdmin,
         isCartOpen,
 
-        // Live CMS Sections (Backed by MySQL)
+        // Live CMS Sections
         announcements,
         heroSlides,
         healthGoals,
@@ -641,6 +717,16 @@ export const StoreProvider = ({ children }) => {
         discountConfig,
         footerConfig,
         saveCMSSection,
+
+        // Data Refreshers
+        fetchProducts,
+        fetchOrders,
+        fetchLeads,
+        fetchAnalytics,
+        fetchHomepageCMS,
+
+        // Lead Submission
+        addLead,
 
         // Handlers
         loginAdmin,
