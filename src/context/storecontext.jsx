@@ -4,7 +4,7 @@ import { initialProducts } from "../data/InitialProduct";
 const StoreContext = createContext();
 
 // Production Render backend URL fallback
-const PRODUCTION_API_URL = "https://pure-organics-server-xxxx.onrender.com";
+const PRODUCTION_API_URL = "https://pure-organics1.onrender.com";
 
 // Dynamic API Base: prioritizes VITE_API_URL, then production Render fallback, then localhost
 const rawApiUrl =
