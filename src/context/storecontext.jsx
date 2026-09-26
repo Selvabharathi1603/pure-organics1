@@ -2,7 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { initialProducts } from "../data/InitialProduct";
 
 const StoreContext = createContext();
-const API_BASE = "http://localhost:5000/api";
+
+// Dynamic API Base: Uses production Render URL if available, otherwise falls back to local
+const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const cleanApiUrl = rawApiUrl.endsWith("/")
+  ? rawApiUrl.slice(0, -1)
+  : rawApiUrl;
+const API_BASE = cleanApiUrl.endsWith("/api")
+  ? cleanApiUrl
+  : `${cleanApiUrl}/api`;
 
 export const ADMIN_USERS = [
   {
@@ -233,7 +241,7 @@ const DEFAULT_DISCOUNT_CONFIG = {
   subtext:
     "Share your birth date to receive seasonal birthday harvest surprises 🌱",
   image:
-    "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+    "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80",
   couponCode: "HARVEST10",
   buttonText: "Claim Harvest Discount",
 };

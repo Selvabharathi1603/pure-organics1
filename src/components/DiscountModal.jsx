@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../context/storecontext";
+import { API_BASE_URL } from "../config/api";
 
 // High-resolution reliable fallback organic harvest image
 const BACKUP_HARVEST_IMAGE =
@@ -71,7 +72,7 @@ export default function DiscountModal({
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/leads", {
+      const response = await fetch(`${API_BASE_URL}/api/leads`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
