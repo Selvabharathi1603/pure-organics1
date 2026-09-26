@@ -56,6 +56,28 @@ db.getConnection((err, conn) => {
       )
     `);
 
+    // Auto-create homepage CMS table if not exists
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS homepage_cms (
+        section_key VARCHAR(100) PRIMARY KEY,
+        content JSON NOT NULL
+      )
+    `);
+
+    // Auto-seed discount_modal content with working high-res organic farm image
+    const defaultDiscountModal = JSON.stringify({
+      badge: "New Harvest Welcome",
+      headline: "Unlock ₹100 off on your first order",
+      subtext: "Share your birth date to receive seasonal birthday harvest surprises 🌱",
+      image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80"
+    });
+
+    conn.query(`
+      INSERT INTO homepage_cms (section_key, content)
+      VALUES ('discount_modal', ?)
+      ON DUPLICATE KEY UPDATE content = VALUES(content)
+    `, [defaultDiscountModal]);
+
     conn.release();
   }
 });
@@ -254,6 +276,9 @@ app.get("/api/leads", (req, res) => {
   });
 });
 
+// ==========================================
+// 5. SEARCH ANALYTICS & INSIGHTS
+// ==========================================
 
 // Log live user search queries & selected category filters from /shop
 app.post("/api/analytics/search", (req, res) => {
@@ -302,8 +327,7 @@ app.get("/api/admin/search-insights", (req, res) => {
   });
 });
 
-
-
+// Super Admin summary analytics
 app.get("/api/admin/analytics", (req, res) => {
   const queries = `
     SELECT COUNT(*) AS totalOrders, IFNULL(SUM(total_amount), 0) AS totalRevenue FROM orders;
@@ -326,7 +350,9 @@ app.get("/api/admin/analytics", (req, res) => {
   });
 });
 
-
+// ==========================================
+// 6. AUTHENTICATION
+// ==========================================
 
 app.post("/api/auth/login", (req, res) => {
   const { username, password } = req.body;
