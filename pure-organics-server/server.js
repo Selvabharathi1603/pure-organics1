@@ -7,6 +7,11 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" })); // Supports image URLs and JSON payloads
 
+// Root Health-Check Route (fixes "Cannot GET /")
+app.get("/", (req, res) => {
+  res.send("🌿 Pure Organics API server is live and running!");
+});
+
 // Detect if running against a cloud database provider like TiDB/Aiven
 const isCloudDatabase = Boolean(
   process.env.DB_HOST &&
@@ -40,6 +45,48 @@ db.getConnection((err, conn) => {
     console.error("❌ MySQL Connection Failed:", err.message);
   } else {
     console.log(`✅ Successfully connected to MySQL Database: ${process.env.DB_NAME || "pure_organics"}`);
+
+    // Auto-create products table if not exists
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        unit VARCHAR(100) NOT NULL,
+        image TEXT NOT NULL,
+        description TEXT,
+        in_stock BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Auto-create orders table if not exists
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tracking_id VARCHAR(50) NOT NULL UNIQUE,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_phone VARCHAR(50) NOT NULL,
+        customer_address TEXT NOT NULL,
+        total_amount DECIMAL(10,2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Placed',
+        dispatch_note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Auto-create users table if not exists
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        username VARCHAR(100) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        badge VARCHAR(100) NOT NULL
+      )
+    `);
 
     // Auto-create newsletter table if not exists
     conn.query(`
@@ -79,7 +126,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-seed discount_modal content with working high-res organic farm image
+    // Auto-seed discount_modal content
     const defaultDiscountModal = JSON.stringify({
       badge: "New Harvest Welcome",
       headline: "Unlock ₹100 off on your first order",
@@ -92,6 +139,33 @@ db.getConnection((err, conn) => {
       VALUES ('discount_modal', ?)
       ON DUPLICATE KEY UPDATE content = VALUES(content)
     `, [defaultDiscountModal]);
+
+    // Seed default admin users if table is empty
+    conn.query("SELECT COUNT(*) AS count FROM users", (err, res) => {
+      if (!err && res[0].count === 0) {
+        const defaultUsers = [
+          ['Farm Founder & Owner', 'owner', 'owner123', 'SUPER_ADMIN', 'Tier 1: Super Admin (Owner)'],
+          ['Site Operations Admin', 'admin', 'site123', 'ADMIN', 'Tier 2: Storefront Admin'],
+          ['Inventory Manager', 'manager', 'farm123', 'STORE_MANAGER', 'Tier 3: Store Manager'],
+          ['Logistics Desk', 'dispatch', 'pack123', 'DISPATCH', 'Tier 4: Dispatch Logistics']
+        ];
+        conn.query("INSERT INTO users (name, username, password, role, badge) VALUES ?", [defaultUsers]);
+      }
+    });
+
+    // Seed initial products if table is empty
+    conn.query("SELECT COUNT(*) AS count FROM products", (err, res) => {
+      if (!err && res[0].count === 0) {
+        const seedProducts = [
+          ['Pure Virgin Coconut Oil', 'Cold-Pressed Oils', 310, '500 ml Glass Jar', 'https://media.istockphoto.com/id/1484936410/photo/bottle-of-coconut-cooking-oil-and-fruit-on-white-background.jpg?s=612x612&w=0&k=20&c=ATsKubzVwWMQXwVkb93qrXatLac7HFJTIx8f1ng216w=', 'Extracted gently from fresh coastal copra below 42°C in native wooden chekkus.', true],
+          ['Heritage Black Rice (Karuppu Kavuni)', 'Heritage Grains', 195, '1 kg Eco Pack', 'https://media.istockphoto.com/id/1434453597/photo/close-up-of-black-rice-in-the-field.jpg?s=612x612&w=0&k=20&c=D6LdUQKJGL4AxLEcmpQvUBPn-qXuRajxZj1corlFP6k=', 'Ancient royal heirloom rice loaded with natural anthocyanin antioxidants.', true],
+          ['Traditional Palm Jaggery (Karupatti)', 'Natural Sweeteners', 180, '500g Native Block', 'https://media.istockphoto.com/id/2191030648/photo/gula-jawa-or-javanese-sugar-or-red-sugar-or-palm-sugar-in-half-ball-shape-inside-white-bowl.jpg?s=612x612&w=0&k=20&c=stdu8cUEfGy90ay70Ki8oLjtiKEzkESZtnk9ih-rXD8=', 'Clarified naturally with organic herbal extracts without chemical bleaching agents.', true],
+          ['Wild Raw Forest Honey', 'Raw Sweeteners', 340, '500g Heavy Glass Jar', 'https://images.unsplash.com/photo-1587049352851-8d4e89133924?w=1000&auto=format&fit=crop&q=60', 'Single-origin raw honey sustainably collected from indigenous deep forest flora.', true],
+          ['Traditional Foxtail Millet (Thinai)', 'Millets', 125, '1 kg Pack', 'https://images.unsplash.com/photo-1783042909392-0b8d8683e0a2?w=1000&auto=format&fit=crop&q=60', 'Native golden grains harvested from pesticide-free rain-fed farmland.', true]
+        ];
+        conn.query("INSERT INTO products (name, category, price, unit, image, description, in_stock) VALUES ?", [seedProducts]);
+      }
+    });
 
     conn.release();
   }
