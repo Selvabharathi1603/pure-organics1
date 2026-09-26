@@ -7,9 +7,18 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" })); // Supports image URLs and JSON payloads
 
-// MySQL connection pool with multipleStatements enabled for analytics
+// Detect if running against a cloud database provider like TiDB/Aiven
+const isCloudDatabase = Boolean(
+  process.env.DB_HOST &&
+  (process.env.DB_HOST.includes("tidbcloud.com") ||
+   process.env.DB_HOST.includes("aivencloud.com") ||
+   process.env.DB_PORT === "4000")
+);
+
+// MySQL connection pool configured for both local and cloud TLS instances
 const db = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
+  port: Number(process.env.DB_PORT) || (isCloudDatabase ? 4000 : 3306),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || "pure_organics",
@@ -17,6 +26,12 @@ const db = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   multipleStatements: true, // Enables batch queries for admin analytics
+  ...(isCloudDatabase && {
+    ssl: {
+      minVersion: "TLSv1.2",
+      rejectUnauthorized: true,
+    },
+  }),
 });
 
 // Verify connection & ensure required tables exist
@@ -24,7 +39,7 @@ db.getConnection((err, conn) => {
   if (err) {
     console.error("❌ MySQL Connection Failed:", err.message);
   } else {
-    console.log("✅ Successfully connected to MySQL Database: pure_organics");
+    console.log(`✅ Successfully connected to MySQL Database: ${process.env.DB_NAME || "pure_organics"}`);
 
     // Auto-create newsletter table if not exists
     conn.query(`
@@ -368,5 +383,5 @@ app.post("/api/auth/login", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Pure Organics API server running on http://localhost:${PORT}`);
+  console.log(`🚀 Pure Organics API server running on port ${PORT}`);
 });
