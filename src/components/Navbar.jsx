@@ -15,37 +15,37 @@ export default function Navbar() {
   const navLinkClass = ({ isActive }) =>
     `px-4 py-2 text-xs uppercase tracking-widest font-semibold rounded-full transition-all duration-200 cursor-pointer ${
       isActive
-        ? "bg-[#1b3b27] text-[#ffffff] shadow-sm"
+        ? "bg-[#1b3b27] text-white shadow-sm"
         : "text-[#4d6355] hover:text-[#1b3b27] hover:bg-[#eef4ef]"
     }`;
 
   const mobileNavLinkClass = ({ isActive }) =>
-    `px-4 py-2.5 text-xs uppercase tracking-widest font-semibold rounded-full text-center transition-all duration-200 cursor-pointer ${
+    `px-4 py-3 text-xs uppercase tracking-widest font-semibold rounded-xl text-center transition-all duration-200 cursor-pointer ${
       isActive
         ? "bg-[#1b3b27] text-white shadow-sm"
         : "text-[#4d6355] hover:text-[#1b3b27] hover:bg-[#eef4ef]"
     }`;
 
   return (
-    <div className="sticky top-4 z-40 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full transition-all">
-      <header className="backdrop-blur-md bg-white/90 border border-[#e4ded3] shadow-[0_10px_30px_rgba(27,59,39,0.06)] rounded-full px-5 py-3 flex items-center justify-between gap-4">
+    <div className="sticky top-2 sm:top-4 z-40 px-2 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full transition-all">
+      <header className="backdrop-blur-md bg-white/90 border border-[#e4ded3] shadow-[0_10px_30px_rgba(27,59,39,0.06)] rounded-full px-3 py-2 sm:px-5 sm:py-3 flex items-center justify-between gap-2">
         {/* Brand Logo */}
         <Link
           to="/"
           onClick={() => setMobileMenuOpen(false)}
-          className="flex items-center gap-2.5 group cursor-pointer"
+          className="flex items-center gap-1.5 sm:gap-2.5 group cursor-pointer shrink-0"
         >
-          <div className="w-10 h-10 rounded-full bg-[#edf5ef] border border-[#cbe1d2] flex items-center justify-center text-[#1b3b27] group-hover:bg-[#1b3b27] group-hover:text-white transition-all duration-300 shadow-sm">
-            <Sprout className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#edf5ef] border border-[#cbe1d2] flex items-center justify-center text-[#1b3b27] group-hover:bg-[#1b3b27] group-hover:text-white transition-all duration-300 shadow-sm shrink-0">
+            <Sprout className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="flex flex-col">
-            <span className="font-serif text-xl tracking-tight text-[#162a1e] font-bold leading-none">
+            <span className="font-serif text-base sm:text-xl tracking-tight text-[#162a1e] font-bold leading-none">
               Pure
               <span className="italic font-normal text-[#2e7d4d] ml-1">
                 Organics
               </span>
             </span>
-            <span className="text-[9px] uppercase tracking-widest text-[#849a8d] font-semibold mt-0.5 font-mono">
+            <span className="text-[8px] sm:text-[9px] uppercase tracking-widest text-[#849a8d] font-semibold mt-0.5 font-mono">
               Native Harvest
             </span>
           </div>
@@ -65,16 +65,18 @@ export default function Navbar() {
         </nav>
 
         {/* Actions: Cart + Mobile Menu Trigger */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={openCart}
-            className="group relative inline-flex items-center gap-2.5 bg-[#1b3b27] hover:bg-[#245236] text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-[0_4px_14px_rgba(27,59,39,0.2)] hover:shadow-[0_6px_20px_rgba(27,59,39,0.28)] transition-all duration-300 cursor-pointer active:scale-95"
+            className="group relative inline-flex items-center gap-1.5 sm:gap-2 bg-[#1b3b27] hover:bg-[#245236] text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-full shadow-[0_4px_14px_rgba(27,59,39,0.2)] hover:shadow-[0_6px_20px_rgba(27,59,39,0.28)] transition-all duration-300 cursor-pointer active:scale-95"
             aria-label="View shopping bag"
           >
-            <ShoppingBag className="w-3.5 h-3.5 text-[#f4e3b2] transition-transform group-hover:-translate-y-0.5" />
-            <span className="tracking-wide uppercase text-[11px]">Bag</span>
-            <span className="bg-[#c58f38] text-[#162a1e] text-[10px] px-2 py-0.5 rounded-full font-bold font-mono">
+            <ShoppingBag className="w-3.5 h-3.5 text-[#f4e3b2]" />
+            <span className="tracking-wide uppercase text-[10px] sm:text-[11px]">
+              Bag
+            </span>
+            <span className="bg-[#c58f38] text-[#162a1e] text-[10px] px-1.5 py-0.2 rounded-full font-bold font-mono">
               {totalCartItems}
             </span>
           </button>
@@ -83,13 +85,13 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="md:hidden p-2 rounded-full border border-[#e4ded3] bg-[#f4f1ea] text-[#1b3b27] hover:bg-[#edf5ef] transition-all cursor-pointer"
+            className="md:hidden p-1.5 sm:p-2 rounded-full border border-[#e4ded3] bg-[#f4f1ea] text-[#1b3b27] hover:bg-[#edf5ef] transition-all cursor-pointer shrink-0"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? (
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             ) : (
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4 h-4" />
             )}
           </button>
         </div>
