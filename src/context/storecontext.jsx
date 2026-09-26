@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { initialProducts } from "../data/InitialProduct";
 
 const StoreContext = createContext();
 
@@ -265,10 +264,8 @@ const DEFAULT_FOOTER_CONFIG = {
 };
 
 export const StoreProvider = ({ children }) => {
-  // Core Storefront State
-  const [products, setProducts] = useState(
-    initialProducts.map((p) => ({ ...p, inStock: true })),
-  );
+  // Core Storefront State (starts empty, populated strictly from MySQL)
+  const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -304,14 +301,19 @@ export const StoreProvider = ({ children }) => {
       const res = await fetch(`${API_BASE}/products`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const formatted = data.map((p) => ({
-            ...p,
-            id: p.id,
-            price: Number(p.price),
-            inStock: Boolean(p.in_stock),
-          }));
-          setProducts(formatted);
+        if (Array.isArray(data)) {
+          const uniqueMap = new Map();
+          data.forEach((p) => {
+            if (!uniqueMap.has(p.name)) {
+              uniqueMap.set(p.name, {
+                ...p,
+                id: p.id,
+                price: Number(p.price),
+                inStock: Boolean(p.in_stock),
+              });
+            }
+          });
+          setProducts(Array.from(uniqueMap.values()));
         }
       }
     } catch (err) {
@@ -333,6 +335,11 @@ export const StoreProvider = ({ children }) => {
               phone: o.customer_phone,
               address: o.customer_address,
             },
+            items: o.items
+              ? typeof o.items === "string"
+                ? JSON.parse(o.items)
+                : o.items
+              : [],
             total: Number(o.total_amount),
             status: o.status,
             dispatchNote: o.dispatch_note,
