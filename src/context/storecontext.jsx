@@ -3,8 +3,16 @@ import { initialProducts } from "../data/InitialProduct";
 
 const StoreContext = createContext();
 
-// Dynamic API Base: Uses production Render URL if available, otherwise falls back to local
-const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// Production Render backend URL fallback
+const PRODUCTION_API_URL = "https://pure-organics-server-xxxx.onrender.com";
+
+// Dynamic API Base: prioritizes VITE_API_URL, then production Render fallback, then localhost
+const rawApiUrl =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? PRODUCTION_API_URL
+    : "http://localhost:5000");
+
 const cleanApiUrl = rawApiUrl.endsWith("/")
   ? rawApiUrl.slice(0, -1)
   : rawApiUrl;
@@ -706,7 +714,6 @@ export const StoreProvider = ({ children }) => {
   return (
     <StoreContext.Provider
       value={{
-        // Storefront catalog & state
         products,
         cart,
         orders,
@@ -715,8 +722,6 @@ export const StoreProvider = ({ children }) => {
         stockAlerts,
         currentAdmin,
         isCartOpen,
-
-        // Live CMS Sections
         announcements,
         heroSlides,
         healthGoals,
@@ -725,18 +730,12 @@ export const StoreProvider = ({ children }) => {
         discountConfig,
         footerConfig,
         saveCMSSection,
-
-        // Data Refreshers
         fetchProducts,
         fetchOrders,
         fetchLeads,
         fetchAnalytics,
         fetchHomepageCMS,
-
-        // Lead Submission
         addLead,
-
-        // Handlers
         loginAdmin,
         logoutAdmin,
         openCart,
