@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from "react";
 import {
-  Trash2,
   LogOut,
   Send,
   Bell,
   CheckCircle2,
   Save,
-  PlusCircle,
+  Plus,
   X,
+  MinusCircle,
   Mail,
   Cake,
   MessageCircle,
   Copy,
   Check,
   TrendingUp,
-  Package,
+  PackageCheck,
   Clock,
   Sparkles,
   Phone,
@@ -26,6 +26,10 @@ import {
   Zap,
   Search,
   SlidersHorizontal,
+  Crown,
+  Palette,
+  Truck,
+  Layers,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 
@@ -73,7 +77,7 @@ export default function AdminDashboard({ onLogout }) {
   const [activeCmsSection, setActiveCmsSection] = useState("announcements");
   const [saveToast, setSaveToast] = useState(false);
   const [toastMessage, setToastMessage] = useState(
-    "Successfully Updated in MySQL Database!",
+    "Storefront Configurations Updated!",
   );
 
   // Marketing & Search Data States
@@ -164,7 +168,7 @@ export default function AdminDashboard({ onLogout }) {
     fetchMarketingData();
   }, []);
 
-  const triggerToast = (msg = "Successfully Updated in MySQL Database!") => {
+  const triggerToast = (msg = "Storefront Configurations Updated!") => {
     setToastMessage(msg);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2500);
@@ -173,11 +177,9 @@ export default function AdminDashboard({ onLogout }) {
   const handleSaveSection = async (sectionKey, payload) => {
     const success = await saveCMSSection(sectionKey, payload);
     if (success) {
-      triggerToast();
+      triggerToast("Storefront Section Updated!");
     } else {
-      alert(
-        "Failed to save to database. Check if your backend server is running.",
-      );
+      alert("Failed to save changes. Please verify backend connection.");
     }
   };
 
@@ -198,7 +200,7 @@ export default function AdminDashboard({ onLogout }) {
         triggerToast("Product details updated in catalog!");
         window.location.reload();
       } else {
-        alert("Failed to update product in database.");
+        alert("Failed to update product details.");
       }
     } catch (err) {
       console.error(err);
@@ -218,12 +220,12 @@ export default function AdminDashboard({ onLogout }) {
   const outOfStockItems = products.filter((p) => p.inStock === false);
   const avgOrderValue =
     orders.length > 0 ? Math.round(grossRevenue / orders.length) : 0;
-  const estimatedGrossProfit = Math.round(grossRevenue * 0.42); // 42% benchmark organic margin
+  const estimatedGrossProfit = Math.round(grossRevenue * 0.42);
 
   // Birthday Filters
   const todaysBirthdays = leads.filter((l) => l.is_birthday_today === 1);
 
-  // Print Invoice Utility
+  // Print Packing Slip Utility
   const printPackingSlip = (order) => {
     const slip = window.open("", "_blank");
     slip.document.write(`
@@ -298,56 +300,110 @@ export default function AdminDashboard({ onLogout }) {
         </div>
 
         {/* Primary Role Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none">
           {isSuperAdmin && (
             <button
               onClick={() => setActiveTab("super-analytics")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                 activeTab === "super-analytics"
-                  ? "bg-[#1c3829] text-white shadow-md border border-[#2e5941]"
-                  : "bg-white text-[#516859] border border-[#dcd4c7] hover:bg-[#edf5ef]"
+                  ? "bg-[#1c3829] text-white shadow-sm border border-[#2e5941]"
+                  : "bg-white text-[#4d6556] border border-[#e5dfd3] hover:bg-[#edf5ef] hover:border-[#2e5941]/40"
               }`}
             >
-              👑 Founder Command Center
+              <span
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                  activeTab === "super-analytics"
+                    ? "bg-[#254b37] text-[#e0b253]"
+                    : "bg-[#faf7f2] text-[#8ca395]"
+                }`}
+              >
+                <Crown className="w-3.5 h-3.5 stroke-[2.2]" />
+              </span>
+              <span>Founder Command Center</span>
             </button>
           )}
 
           {(isAdmin || isSuperAdmin) && (
             <button
               onClick={() => setActiveTab("homepage-cms")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                 activeTab === "homepage-cms"
-                  ? "bg-[#1c3829] text-white shadow-md border border-[#2e5941]"
-                  : "bg-white text-[#516859] border border-[#dcd4c7] hover:bg-[#edf5ef]"
+                  ? "bg-[#1c3829] text-white shadow-sm border border-[#2e5941]"
+                  : "bg-white text-[#4d6556] border border-[#e5dfd3] hover:bg-[#edf5ef] hover:border-[#2e5941]/40"
               }`}
             >
-              🎨 Storefront CMS Studio
+              <span
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                  activeTab === "homepage-cms"
+                    ? "bg-[#254b37] text-[#e0b253]"
+                    : "bg-[#faf7f2] text-[#8ca395]"
+                }`}
+              >
+                <Palette className="w-3.5 h-3.5 stroke-[2.2]" />
+              </span>
+              <span>Storefront CMS Studio</span>
             </button>
           )}
 
           {(isStoreManager || isSuperAdmin) && (
             <button
               onClick={() => setActiveTab("inventory")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                 activeTab === "inventory"
-                  ? "bg-[#1c3829] text-white shadow-md border border-[#2e5941]"
-                  : "bg-white text-[#516859] border border-[#dcd4c7] hover:bg-[#edf5ef]"
+                  ? "bg-[#1c3829] text-white shadow-sm border border-[#2e5941]"
+                  : "bg-white text-[#4d6556] border border-[#e5dfd3] hover:bg-[#edf5ef] hover:border-[#2e5941]/40"
               }`}
             >
-              📦 Inventory & Catalog ({products.length})
+              <span
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                  activeTab === "inventory"
+                    ? "bg-[#254b37] text-[#e0b253]"
+                    : "bg-[#faf7f2] text-[#8ca395]"
+                }`}
+              >
+                <PackageCheck className="w-3.5 h-3.5 stroke-[2.2]" />
+              </span>
+              <span>Inventory & Catalog</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  activeTab === "inventory"
+                    ? "bg-[#2b553e] text-[#d6e8de]"
+                    : "bg-[#f4efe6] text-[#6d8274]"
+                }`}
+              >
+                {products.length}
+              </span>
             </button>
           )}
 
           {(isDispatch || isSuperAdmin) && (
             <button
               onClick={() => setActiveTab("dispatch")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
                 activeTab === "dispatch"
-                  ? "bg-[#1c3829] text-white shadow-md border border-[#2e5941]"
-                  : "bg-white text-[#516859] border border-[#dcd4c7] hover:bg-[#edf5ef]"
+                  ? "bg-[#1c3829] text-white shadow-sm border border-[#2e5941]"
+                  : "bg-white text-[#4d6556] border border-[#e5dfd3] hover:bg-[#edf5ef] hover:border-[#2e5941]/40"
               }`}
             >
-              🚚 Logistics Stepper ({orders.length})
+              <span
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                  activeTab === "dispatch"
+                    ? "bg-[#254b37] text-[#e0b253]"
+                    : "bg-[#faf7f2] text-[#8ca395]"
+                }`}
+              >
+                <Truck className="w-3.5 h-3.5 stroke-[2.2]" />
+              </span>
+              <span>Logistics Stepper</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  activeTab === "dispatch"
+                    ? "bg-[#2b553e] text-[#d6e8de]"
+                    : "bg-[#f4efe6] text-[#6d8274]"
+                }`}
+              >
+                {orders.length}
+              </span>
             </button>
           )}
         </div>
@@ -360,10 +416,10 @@ export default function AdminDashboard({ onLogout }) {
             {/* Super Admin Module Sub-Navbar */}
             <div className="bg-white p-2 rounded-2xl border border-[#e8e2d5] flex flex-wrap gap-2 text-xs shadow-xs">
               {[
-                { id: "overview", label: "📊 Revenue & Financial Pulse" },
-                { id: "kanban", label: "🚚 Live Order Fulfillment Board" },
-                { id: "freshness", label: "🌾 Mill Freshness & Batch Tracker" },
-                { id: "crm", label: "👥 VIP Customer & Birthday Radar" },
+                { id: "overview", label: "Revenue & Financial Pulse" },
+                { id: "kanban", label: "Live Order Fulfillment Board" },
+                { id: "freshness", label: "Mill Freshness & Batch Tracker" },
+                { id: "crm", label: "VIP Customer & Birthday Radar" },
               ].map((sub) => (
                 <button
                   key={sub.id}
@@ -541,7 +597,6 @@ export default function AdminDashboard({ onLogout }) {
                     </span>
                   </div>
 
-                  {/* Visual simulated velocity bars */}
                   <div className="grid grid-cols-7 gap-2 pt-4 items-end h-32 border-b border-[#eee8dd] pb-2">
                     {[
                       { day: "Mon", val: 40, amt: "₹1,840" },
@@ -851,7 +906,7 @@ export default function AdminDashboard({ onLogout }) {
                           <div>
                             {l.dob ? (
                               <span className="bg-[#fef3c7] text-[#b45309] px-2.5 py-0.5 rounded-full font-bold text-[10px]">
-                                🎂 {l.dob}
+                                {l.dob}
                               </span>
                             ) : (
                               <span className="text-stone-400 italic text-[11px]">
@@ -930,7 +985,7 @@ export default function AdminDashboard({ onLogout }) {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 2: STOREFRONT CMS STUDIO (TOP TO BOTTOM HOMEPAGE CONTROL)  */}
+        {/* TAB 2: STOREFRONT CMS STUDIO (HOMEPAGE SECTIONS)               */}
         {/* ============================================================== */}
         {activeTab === "homepage-cms" && (isAdmin || isSuperAdmin) && (
           <div className="space-y-6">
@@ -1057,7 +1112,7 @@ export default function AdminDashboard({ onLogout }) {
                       className="inline-flex items-center gap-2 py-2.5 px-6 bg-[#1c3829] text-white font-bold rounded-xl shadow-xs cursor-pointer hover:bg-[#255236]"
                     >
                       <Save className="w-4 h-4 text-[#e0b253]" /> Save
-                      Announcement Changes to MySQL
+                      Announcement Changes
                     </button>
                   </div>
                 </form>
@@ -1116,9 +1171,10 @@ export default function AdminDashboard({ onLogout }) {
                             setAnnouncementForm(updated);
                             handleSaveSection("announcement", updated);
                           }}
-                          className="text-rose-600 font-bold hover:underline cursor-pointer"
+                          className="text-stone-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                          title="Remove Bulletin"
                         >
-                          Remove
+                          <MinusCircle className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
@@ -1252,7 +1308,7 @@ export default function AdminDashboard({ onLogout }) {
                     type="submit"
                     className="sm:col-span-3 py-2.5 bg-[#1c3829] text-white font-bold rounded-xl shadow-xs cursor-pointer hover:bg-[#255236]"
                   >
-                    Add Slide & Sync to MySQL
+                    Add Slide to Showcase
                   </button>
                 </form>
 
@@ -1284,9 +1340,10 @@ export default function AdminDashboard({ onLogout }) {
                             );
                             handleSaveSection("hero_slides", updated);
                           }}
-                          className="text-rose-600 font-bold hover:underline cursor-pointer"
+                          className="text-stone-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                          title="Remove Slide"
                         >
-                          Delete
+                          <MinusCircle className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -1341,7 +1398,7 @@ export default function AdminDashboard({ onLogout }) {
                     }
                     className="py-2.5 px-6 bg-[#1c3829] text-white font-bold rounded-xl cursor-pointer"
                   >
-                    Save Health Goals to MySQL
+                    Save Health Goals
                   </button>
                 </div>
               </div>
@@ -1410,7 +1467,7 @@ export default function AdminDashboard({ onLogout }) {
                     type="submit"
                     className="py-2.5 px-6 bg-[#1c3829] text-white font-bold rounded-xl cursor-pointer"
                   >
-                    Save Gifting Card to MySQL
+                    Save Gifting Card
                   </button>
                 </form>
               </div>
@@ -1480,7 +1537,7 @@ export default function AdminDashboard({ onLogout }) {
                     type="submit"
                     className="sm:col-span-3 py-2.5 bg-[#1c3829] text-white font-bold rounded-xl cursor-pointer"
                   >
-                    Add Review & Sync to MySQL
+                    Add Review
                   </button>
                 </form>
 
@@ -1506,9 +1563,10 @@ export default function AdminDashboard({ onLogout }) {
                           setLocalTestimonials(updated);
                           handleSaveSection("testimonials", updated);
                         }}
-                        className="text-rose-600 font-bold hover:underline cursor-pointer"
+                        className="text-stone-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                        title="Remove Review"
                       >
-                        Delete
+                        <MinusCircle className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
@@ -1575,7 +1633,7 @@ export default function AdminDashboard({ onLogout }) {
                     type="submit"
                     className="py-2.5 px-6 bg-[#1c3829] text-white font-bold rounded-xl cursor-pointer"
                   >
-                    Save Discount Modal to MySQL
+                    Save Discount Modal
                   </button>
                 </form>
               </div>
@@ -1646,7 +1704,7 @@ export default function AdminDashboard({ onLogout }) {
                     type="submit"
                     className="py-2.5 px-6 bg-[#1c3829] text-white font-bold rounded-xl cursor-pointer"
                   >
-                    Save Footer to MySQL
+                    Save Footer
                   </button>
                 </form>
               </div>
@@ -1662,14 +1720,14 @@ export default function AdminDashboard({ onLogout }) {
             {/* 1. ADD NEW HARVEST ITEM */}
             <div className="bg-white p-6 rounded-3xl border border-[#e8e2d5] shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-[#eee8dd] pb-3">
-                <h3 className="font-serif text-base font-bold text-[#162a1e] flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-[#edf5ef] text-[#2e7d4d]">
-                    <PlusCircle className="w-4 h-4 inline" />
-                  </span>
-                  Add New Harvest Item to Storefront
+                <h3 className="font-serif text-base font-bold text-[#162a1e] flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#1c3829] text-[#e0b253] flex items-center justify-center shadow-xs">
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                  <span>Add New Harvest Item to Storefront</span>
                 </h3>
-                <span className="text-[11px] text-[#6d8274] font-semibold uppercase tracking-wider">
-                  Direct MySQL Entry
+                <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-[#738d81] bg-[#faf7f2] border border-[#e8e2d5] px-2.5 py-1 rounded-full">
+                  Active Catalog
                 </span>
               </div>
 
@@ -1691,7 +1749,7 @@ export default function AdminDashboard({ onLogout }) {
                     image: "",
                     description: "",
                   });
-                  triggerToast("New product saved to MySQL!");
+                  triggerToast("New product saved to catalog!");
                 }}
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs"
               >
@@ -1800,7 +1858,7 @@ export default function AdminDashboard({ onLogout }) {
                     type="submit"
                     className="py-2.5 px-6 bg-[#1c3829] hover:bg-[#255236] text-white font-bold rounded-xl shadow-xs cursor-pointer transition-all"
                   >
-                    ✚ Save New Product to Catalog
+                    Publish New Item to Catalog
                   </button>
                 </div>
               </form>
@@ -1918,9 +1976,10 @@ export default function AdminDashboard({ onLogout }) {
                           <button
                             type="button"
                             onClick={() => deleteProduct(p.id)}
-                            className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
+                            className="text-stone-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer inline-flex items-center justify-center"
+                            title="Remove Product"
                           >
-                            <Trash2 className="w-4 h-4 inline" />
+                            <MinusCircle className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
@@ -2069,7 +2128,7 @@ export default function AdminDashboard({ onLogout }) {
                       onClick={handleSaveProductEdit}
                       className="px-5 py-2 rounded-xl font-bold bg-[#1c3829] text-white hover:bg-[#255236] cursor-pointer"
                     >
-                      Save Changes to MySQL
+                      Save Changes
                     </button>
                   </div>
                 </div>

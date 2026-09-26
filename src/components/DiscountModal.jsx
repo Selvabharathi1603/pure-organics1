@@ -9,7 +9,7 @@ export default function DiscountModal({ isOpen, onClose }) {
     subtext:
       "Share your birth date to receive seasonal birthday harvest surprises 🌱",
     image:
-      "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1571509107684-7e3034a90012?w=1000&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fG9yZ2FuaWMlMjBmYXJtaW5nfGVufDB8fDB8fHww",
   };
 
   const [formData, setFormData] = useState({

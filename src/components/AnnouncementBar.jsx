@@ -34,10 +34,12 @@ export default function AnnouncementBar() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
           {/* Sale Hook */}
           <div className="flex items-center gap-2.5 flex-wrap justify-center">
-            <span className="inline-flex items-center gap-1.5 bg-[#f59e0b] text-[#1b3b27] text-[11px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-xs">
-              <Sparkles className="w-3 h-3 fill-current text-[#1b3b27]" />
+            {/* --- UPGRADED LUXURY GOLD FOIL BADGE --- */}
+            <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-[#fde68a] via-[#f59e0b] to-[#d97706] text-[#1b3b27] text-[10px] font-black uppercase tracking-[0.2em] px-3 py-0.5 rounded-full shadow-sm border border-[#fef3c7]/60">
+              <span className="text-[11px] leading-none">✦</span>
               Harvest Special
             </span>
+            {/* -------------------------------------- */}
             <p className="text-white text-xs sm:text-sm font-semibold tracking-wide">
               FLAT{" "}
               <span className="text-[#fbbf24] font-black text-sm sm:text-base">
@@ -94,8 +96,8 @@ export default function AnnouncementBar() {
               className="flex items-center space-x-10 sm:space-x-14 pr-10 sm:pr-14 shrink-0"
             >
               <span className="flex items-center gap-2">
-                <Truck className="w-3.5 h-3.5 text-[#2e7d4d]" /> Free Express
-                Shipping on Orders Above ₹499
+                <Truck className="w-3.5 h-3.5 text-[#2e7d4d]" />
+                free shipping for orders above 499
               </span>
               <span className="text-[#a3c9a8]">◆</span>
               <span className="flex items-center gap-2">

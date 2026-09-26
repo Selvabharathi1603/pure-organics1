@@ -254,9 +254,6 @@ app.get("/api/leads", (req, res) => {
   });
 });
 
-// ==========================================
-// 5. SEARCH & FILTER ANALYTICS ROUTES
-// ==========================================
 
 // Log live user search queries & selected category filters from /shop
 app.post("/api/analytics/search", (req, res) => {
@@ -305,9 +302,7 @@ app.get("/api/admin/search-insights", (req, res) => {
   });
 });
 
-// ==========================================
-// 6. SUPER ADMIN ANALYTICS ROUTE
-// ==========================================
+
 
 app.get("/api/admin/analytics", (req, res) => {
   const queries = `
@@ -331,9 +326,7 @@ app.get("/api/admin/analytics", (req, res) => {
   });
 });
 
-// ==========================================
-// 7. AUTH ROUTE
-// ==========================================
+
 
 app.post("/api/auth/login", (req, res) => {
   const { username, password } = req.body;
