@@ -1,17 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useStore } from "../context/storecontext";
 
-export default function DiscountModal({ isOpen, onClose }) {
-  const store = useStore?.() || {};
-  const discountConfig = store.discountConfig || {
-    badge: "New Harvest Welcome",
-    headline: "Unlock ₹100 off on your first order",
-    subtext:
-      "Share your birth date to receive seasonal birthday harvest surprises 🌱",
-    image:
-      "https://images.unsplash.com/photo-1571509107684-7e3034a90012?w=1000&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fG9yZ2FuaWMlMjBmYXJtaW5nfGVufDB8fDB8fHww",
-  };
+// High-resolution reliable fallback organic harvest image
+const BACKUP_HARVEST_IMAGE =
+  "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80";
 
+export default function DiscountModal({
+  isOpen: externalIsOpen,
+  onClose: externalOnClose,
+}) {
+  const store = useStore?.() || {};
+  const cms = store.discountConfig || store.cmsData?.discount_modal || {};
+
+  // Internal state that ALWAYS opens on every page refresh/reload
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  useEffect(() => {
+    // Clear any previous persistent blocks if they were stored in browser
+    try {
+      localStorage.removeItem("hasSeenDiscount");
+      localStorage.removeItem("discountModalShown");
+      sessionStorage.removeItem("hasSeenDiscount");
+      sessionStorage.removeItem("discountModalShown");
+    } catch (e) {}
+
+    // Pop up smoothly 600ms after component mounts on every refresh
+    const timer = setTimeout(() => {
+      setInternalOpen(true);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Safe fallbacks to prevent empty text or broken image layout
+  const badge = cms.badge?.trim() ? cms.badge : "New Harvest Welcome";
+  const headline = cms.headline?.trim()
+    ? cms.headline
+    : "Unlock ₹100 off on your first order";
+  const subtext = cms.subtext?.trim()
+    ? cms.subtext
+    : "Share your birth date to receive seasonal birthday harvest surprises 🌱";
+  const rawImage =
+    cms.image && cms.image.trim() !== "" ? cms.image : BACKUP_HARVEST_IMAGE;
+
+  const [displayImage, setDisplayImage] = useState(rawImage);
   const [formData, setFormData] = useState({
     dob: "",
     phone: "",
@@ -19,7 +51,15 @@ export default function DiscountModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setInternalOpen(false);
+    if (externalOnClose) externalOnClose();
+  };
+
+  // Open if either internal timer triggers or external prop is true
+  const showModal = internalOpen || Boolean(externalIsOpen);
+
+  if (!showModal) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,7 +71,6 @@ export default function DiscountModal({ isOpen, onClose }) {
     setLoading(true);
 
     try {
-      // Direct call to your server.js POST /api/leads endpoint
       const response = await fetch("http://localhost:5000/api/leads", {
         method: "POST",
         headers: {
@@ -49,14 +88,13 @@ export default function DiscountModal({ isOpen, onClose }) {
       }
 
       setSubmitted(true);
-      // Close modal after showing success message
       setTimeout(() => {
         setSubmitted(false);
-        onClose();
+        handleClose();
       }, 1500);
     } catch (error) {
       console.error("Lead submission error:", error);
-      alert("Could not save details. Please make sure the server is running!");
+      alert("Could not save details. Please verify your backend is running!");
     } finally {
       setLoading(false);
     }
@@ -64,8 +102,8 @@ export default function DiscountModal({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#162a1e]/50 backdrop-blur-xs"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#162a1e]/60 backdrop-blur-xs"
+      onClick={handleClose}
     >
       <div
         className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-[#e8e2d5]"
@@ -74,19 +112,20 @@ export default function DiscountModal({ isOpen, onClose }) {
         {/* Close Button */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Close"
-          className="absolute top-3 right-3 z-10 text-stone-400 hover:text-stone-800 text-lg font-bold p-1 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+          className="absolute top-3 right-3 z-30 text-stone-500 hover:text-stone-900 text-sm font-bold w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white flex items-center justify-center transition-colors cursor-pointer shadow-xs"
         >
           ✕
         </button>
 
-        {/* Left Side: Editorial Image */}
-        <div className="w-full md:w-1/2 bg-[#faf7f2] min-h-[220px] md:min-h-full flex items-center justify-center overflow-hidden">
+        {/* Left Side: Product / Farm Harvest Image */}
+        <div className="w-full md:w-1/2 bg-[#faf7f2] min-h-[220px] md:min-h-[360px] relative overflow-hidden flex items-center justify-center">
           <img
-            src={discountConfig.image}
+            src={displayImage}
             alt="Organic Harvest Offer"
-            className="w-full h-full object-cover"
+            onError={() => setDisplayImage(BACKUP_HARVEST_IMAGE)}
+            className="w-full h-full object-cover object-center absolute inset-0"
           />
         </div>
 
@@ -105,14 +144,12 @@ export default function DiscountModal({ isOpen, onClose }) {
           ) : (
             <>
               <span className="text-[10px] font-bold text-[#2e7d4d] uppercase tracking-widest block mb-1">
-                {discountConfig.badge}
+                {badge}
               </span>
               <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#162a1e] leading-tight">
-                {discountConfig.headline}
+                {headline}
               </h2>
-              <p className="text-xs text-[#5c7365] mt-2">
-                {discountConfig.subtext}
-              </p>
+              <p className="text-xs text-[#5c7365] mt-2">{subtext}</p>
 
               <form onSubmit={handleSubmit} className="mt-5 space-y-3">
                 <div>
