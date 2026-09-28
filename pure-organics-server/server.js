@@ -46,7 +46,7 @@ db.getConnection((err, conn) => {
   } else {
     console.log(`✅ Successfully connected to MySQL Database: ${process.env.DB_NAME || "pure_organics"}`);
 
-    // Auto-create products table if not exists
+    // 1. Auto-create products table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,7 +61,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-create orders table if not exists
+    // 2. Auto-create orders table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS orders (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,7 +76,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-create users table if not exists
+    // 3. Auto-create users table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -88,7 +88,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-create newsletter table if not exists
+    // 4. Auto-create newsletter table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS newsletter_subscribers (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,7 +97,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-create discount leads table if not exists
+    // 5. Auto-create discount leads table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS discount_leads (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -108,7 +108,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-create search & filter analytics table if not exists
+    // 6. Auto-create search & filter analytics table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS search_analytics (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -118,11 +118,25 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // Auto-create homepage CMS table if not exists
+    // 7. Auto-create homepage CMS table if not exists
     conn.query(`
       CREATE TABLE IF NOT EXISTS homepage_cms (
         section_key VARCHAR(100) PRIMARY KEY,
         content JSON NOT NULL
+      )
+    `);
+
+    // 8. Auto-create serviceable pincodes table if not exists
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS serviceable_pincodes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        pincode VARCHAR(6) UNIQUE NOT NULL,
+        district VARCHAR(100) NOT NULL,
+        state VARCHAR(100) NOT NULL,
+        delivery_days INT NOT NULL DEFAULT 3,
+        cod_available BOOLEAN DEFAULT TRUE,
+        shipping_charge DECIMAL(6, 2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -153,18 +167,24 @@ db.getConnection((err, conn) => {
       }
     });
 
-    // Seed initial products if table is empty
-    conn.query("SELECT COUNT(*) AS count FROM products", (err, res) => {
-      if (!err && res[0].count === 0) {
-        const seedProducts = [
-          ['Pure Virgin Coconut Oil', 'Cold-Pressed Oils', 310, '500 ml Glass Jar', 'https://media.istockphoto.com/id/1484936410/photo/bottle-of-coconut-cooking-oil-and-fruit-on-white-background.jpg?s=612x612&w=0&k=20&c=ATsKubzVwWMQXwVkb93qrXatLac7HFJTIx8f1ng216w=', 'Extracted gently from fresh coastal copra below 42°C in native wooden chekkus.', true],
-          ['Heritage Black Rice (Karuppu Kavuni)', 'Heritage Grains', 195, '1 kg Eco Pack', 'https://media.istockphoto.com/id/1434453597/photo/close-up-of-black-rice-in-the-field.jpg?s=612x612&w=0&k=20&c=D6LdUQKJGL4AxLEcmpQvUBPn-qXuRajxZj1corlFP6k=', 'Ancient royal heirloom rice loaded with natural anthocyanin antioxidants.', true],
-          ['Traditional Palm Jaggery (Karupatti)', 'Natural Sweeteners', 180, '500g Native Block', 'https://media.istockphoto.com/id/2191030648/photo/gula-jawa-or-javanese-sugar-or-red-sugar-or-palm-sugar-in-half-ball-shape-inside-white-bowl.jpg?s=612x612&w=0&k=20&c=stdu8cUEfGy90ay70Ki8oLjtiKEzkESZtnk9ih-rXD8=', 'Clarified naturally with organic herbal extracts without chemical bleaching agents.', true],
-          ['Wild Raw Forest Honey', 'Raw Sweeteners', 340, '500g Heavy Glass Jar', 'https://images.unsplash.com/photo-1587049352851-8d4e89133924?w=1000&auto=format&fit=crop&q=60', 'Single-origin raw honey sustainably collected from indigenous deep forest flora.', true],
-          ['Traditional Foxtail Millet (Thinai)', 'Millets', 125, '1 kg Pack', 'https://images.unsplash.com/photo-1783042909392-0b8d8683e0a2?w=1000&auto=format&fit=crop&q=60', 'Native golden grains harvested from pesticide-free rain-fed farmland.', true]
-        ];
-        conn.query("INSERT INTO products (name, category, price, unit, image, description, in_stock) VALUES ?", [seedProducts]);
-      }
+    // Seed initial serviceable pincodes safely without duplicates
+    const seedPincodes = `
+      INSERT INTO serviceable_pincodes (pincode, district, state, delivery_days, cod_available, shipping_charge)
+      VALUES
+        ('627001', 'Tirunelveli Town', 'Tamil Nadu', 1, TRUE, 0.00),
+        ('627416', 'Ambasamudram', 'Tamil Nadu', 1, TRUE, 0.00),
+        ('628001', 'Thoothukudi Central', 'Tamil Nadu', 1, TRUE, 0.00),
+        ('628002', 'Thoothukudi Port', 'Tamil Nadu', 1, TRUE, 0.00),
+        ('625001', 'Madurai', 'Tamil Nadu', 2, TRUE, 0.00),
+        ('641001', 'Coimbatore', 'Tamil Nadu', 2, TRUE, 0.00),
+        ('600001', 'Chennai Central', 'Tamil Nadu', 2, TRUE, 0.00),
+        ('600028', 'Chennai (Mylapore/RA Puram)', 'Tamil Nadu', 2, TRUE, 0.00),
+        ('560001', 'Bengaluru', 'Karnataka', 3, TRUE, 40.00),
+        ('500001', 'Hyderabad', 'Telangana', 4, FALSE, 50.00)
+      ON DUPLICATE KEY UPDATE district = VALUES(district);
+    `;
+    conn.query(seedPincodes, (err) => {
+      if (err) console.warn("Pincode seed warning:", err.message);
     });
 
     conn.release();
@@ -227,7 +247,50 @@ app.delete("/api/products/:id", (req, res) => {
 });
 
 // ==========================================
-// 2. ORDERS ROUTES
+// 2. PINCODE SERVICEABILITY ROUTE (TiDB Cloud)
+// ==========================================
+
+app.get("/api/pincodes/check/:pincode", (req, res) => {
+  const { pincode } = req.params;
+
+  if (!pincode || pincode.length !== 6 || !/^\d+$/.test(pincode)) {
+    return res.status(400).json({ error: "Invalid 6-digit pincode format" });
+  }
+
+  const query = `
+    SELECT pincode, district, state, delivery_days, cod_available, shipping_charge 
+    FROM serviceable_pincodes 
+    WHERE pincode = ?
+  `;
+
+  db.query(query, [pincode], (err, results) => {
+    if (err) {
+      console.error("Database pincode lookup error:", err);
+      return res.status(500).json({ error: "Database error during pincode check" });
+    }
+
+    if (results.length > 0) {
+      const data = results[0];
+      return res.json({
+        serviceable: true,
+        pincode: data.pincode,
+        district: data.district,
+        state: data.state,
+        deliveryDays: data.delivery_days,
+        codAvailable: Boolean(data.cod_available),
+        shippingCharge: Number(data.shipping_charge),
+      });
+    } else {
+      return res.json({
+        serviceable: false,
+        message: "Currently we do not deliver to this pincode. Expanding soon!",
+      });
+    }
+  });
+});
+
+// ==========================================
+// 3. ORDERS ROUTES
 // ==========================================
 
 app.get("/api/orders", (req, res) => {
@@ -267,7 +330,7 @@ app.patch("/api/orders/:trackingId/status", (req, res) => {
 });
 
 // ==========================================
-// 3. HOMEPAGE CMS ROUTES (Database Controlled)
+// 4. HOMEPAGE CMS ROUTES (Database Controlled)
 // ==========================================
 
 app.get("/api/cms/homepage", (req, res) => {
@@ -300,10 +363,9 @@ app.put("/api/cms/homepage/:sectionKey", (req, res) => {
 });
 
 // ==========================================
-// 4. NEWSLETTER & BIRTHDAY LEADS ROUTES
+// 5. NEWSLETTER & BIRTHDAY LEADS ROUTES
 // ==========================================
 
-// Save email subscriber
 app.post("/api/newsletter", (req, res) => {
   const { email } = req.body;
   if (!email || !email.includes("@")) {
@@ -317,7 +379,6 @@ app.post("/api/newsletter", (req, res) => {
   });
 });
 
-// Get all newsletter emails for admin
 app.get("/api/newsletter", (req, res) => {
   db.query("SELECT * FROM newsletter_subscribers ORDER BY id DESC", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -325,7 +386,6 @@ app.get("/api/newsletter", (req, res) => {
   });
 });
 
-// Save birthday lead from Welcome Modal
 app.post("/api/leads", (req, res) => {
   const { phone, dob, coupon_code } = req.body;
   if (!phone || phone.length < 10) {
@@ -343,7 +403,6 @@ app.post("/api/leads", (req, res) => {
   });
 });
 
-// Get customer leads with automated 'is_birthday_today' check
 app.get("/api/leads", (req, res) => {
   const sql = `
     SELECT 
@@ -366,10 +425,9 @@ app.get("/api/leads", (req, res) => {
 });
 
 // ==========================================
-// 5. SEARCH ANALYTICS & INSIGHTS
+// 6. SEARCH ANALYTICS & INSIGHTS
 // ==========================================
 
-// Log live user search queries & selected category filters from /shop
 app.post("/api/analytics/search", (req, res) => {
   const { query_term, filter_category } = req.body;
   const term = (query_term || "").trim().toLowerCase();
@@ -386,7 +444,6 @@ app.post("/api/analytics/search", (req, res) => {
   });
 });
 
-// Fetch top searched keywords & most clicked category filters for Super Admin
 app.get("/api/admin/search-insights", (req, res) => {
   const queries = `
     SELECT query_term, COUNT(*) AS count 
@@ -416,7 +473,6 @@ app.get("/api/admin/search-insights", (req, res) => {
   });
 });
 
-// Super Admin summary analytics
 app.get("/api/admin/analytics", (req, res) => {
   const queries = `
     SELECT COUNT(*) AS totalOrders, IFNULL(SUM(total_amount), 0) AS totalRevenue FROM orders;
@@ -440,7 +496,7 @@ app.get("/api/admin/analytics", (req, res) => {
 });
 
 // ==========================================
-// 6. AUTHENTICATION
+// 7. AUTHENTICATION
 // ==========================================
 
 app.post("/api/auth/login", (req, res) => {
