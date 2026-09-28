@@ -17,12 +17,10 @@ import {
   CreditCard,
   Banknote,
   Loader2,
-  FileText,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
 import PincodeChecker from "../../components/PincodeChecker";
-import InvoiceModal from "../../components/InvoiceModal";
 
 export default function Cart() {
   const {
@@ -44,9 +42,6 @@ export default function Cart() {
   // Payment Selection State: 'cod' or 'online'
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-
-  // Invoice Modal State
-  const [showInvoice, setShowInvoice] = useState(false);
 
   // Coupon States
   const [couponInput, setCouponInput] = useState("");
@@ -442,16 +437,8 @@ export default function Cart() {
           </div>
         </div>
 
-        {/* Action Buttons: Invoice, Real-Time Tracking, Continue Shopping */}
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-          <button
-            type="button"
-            onClick={() => setShowInvoice(true)}
-            className="inline-flex items-center gap-2 px-7 py-3.5 bg-white border border-[#d2dfd5] hover:bg-[#edf5ef] text-[#1b3b27] text-xs font-bold uppercase tracking-wider rounded-full shadow-xs transition-all cursor-pointer"
-          >
-            <FileText className="w-4 h-4 text-[#2e7d4d]" /> View & Print Invoice
-          </button>
-
           <button
             type="button"
             onClick={() => navigate("/track")}
@@ -467,14 +454,6 @@ export default function Cart() {
             <Compass className="w-4 h-4 text-[#c58f38]" /> Continue Shopping
           </Link>
         </div>
-
-        {/* Printable Invoice Modal */}
-        {showInvoice && (
-          <InvoiceModal
-            trackingId={completedOrder.trackingId}
-            onClose={() => setShowInvoice(false)}
-          />
-        )}
       </div>
     );
   }
