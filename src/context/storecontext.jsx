@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { auth, signOut } from "../config/firebase";
-import { onAuthStateChanged } from "firebase/auth";
 
 const StoreContext = createContext();
 
@@ -15,47 +13,16 @@ export function StoreProvider({ children }) {
     }
   });
 
-  // 2. Drawer & Modal States
+  // 2. Drawer Open/Close State
   const [isCartOpen, setIsCartOpen] = useState(false);
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
 
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-
-  // 3. Customer Authentication State (Firebase)
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser({
-          uid: user.uid,
-          name: user.displayName || user.email?.split("@")[0] || "Patron",
-          email: user.email || "",
-          phone: user.phoneNumber || "",
-        });
-      } else {
-        setCurrentUser(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const logoutCustomer = async () => {
-    try {
-      await signOut(auth);
-      setCurrentUser(null);
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
-  };
-
-  // 4. Products State
+  // 3. Products State
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  // 5. Announcements & CMS Configuration State
+  // 4. Announcements & CMS Configuration State
   const [announcements, setAnnouncements] = useState({
     topBarNotice:
       "Seasonal Harvest Notice: Direct farm delivery across Tamil Nadu & Bangalore 🌾",
@@ -76,7 +43,7 @@ export function StoreProvider({ children }) {
     }
   }, [cart]);
 
-  // Fetch Products from Backend
+  // Fetch Products from TiDB Backend
   const fetchProducts = async () => {
     setLoadingProducts(true);
     try {
@@ -153,7 +120,7 @@ export function StoreProvider({ children }) {
     localStorage.removeItem("pure_organics_cart");
   };
 
-  // Place Order: matches clean TiDB schema (tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note)
+  // Place Order & Persist to TiDB Cloud
   const placeOrder = (orderPayload) => {
     const trackingId = "PO-" + Math.floor(100000 + Math.random() * 900000);
 
@@ -192,10 +159,6 @@ export function StoreProvider({ children }) {
         setIsCartOpen,
         openCart,
         closeCart,
-        isAuthOpen,
-        setIsAuthOpen,
-        currentUser,
-        logoutCustomer,
         addToCart,
         updateQuantity,
         removeFromCart,
