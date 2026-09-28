@@ -9,6 +9,7 @@ import Shop from "./pages/client/Shop";
 import Cart from "./pages/client/Cart";
 import TrackOrder from "./pages/client/Trackorder";
 import AdminLogin from "./pages/Admin/AdminLogin";
+import PincodeChecker from "./components/PincodeChecker";
 
 export default function App() {
   return (

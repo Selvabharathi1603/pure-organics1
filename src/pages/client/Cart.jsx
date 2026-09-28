@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
+import PincodeChecker from "../../components/PincodeChecker";
 
 export default function Cart() {
   const {
@@ -73,7 +74,6 @@ export default function Cart() {
       return;
     }
 
-    // Configured system coupons + dynamically supported coupons from CMS
     const validCodes = {
       HARVEST10: {
         type: "percentage",
@@ -97,7 +97,6 @@ export default function Cart() {
       },
     };
 
-    // Add CMS configured code dynamically if present
     if (announcements?.couponCode) {
       validCodes[announcements.couponCode.toUpperCase()] = {
         type: "percentage",
@@ -186,7 +185,6 @@ export default function Cart() {
   if (completedOrder) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-in fade-in duration-300">
-        {/* Success Banner */}
         <div className="bg-white border border-[#cbe1d2] rounded-3xl p-6 sm:p-10 shadow-[0_10px_30px_rgba(46,125,77,0.08)] text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-[#edf5ef] border border-[#cbe1d2] text-[#2e7d4d] flex items-center justify-center mx-auto shadow-sm">
             <CheckCircle2 className="w-9 h-9" />
@@ -205,7 +203,6 @@ export default function Cart() {
             </p>
           </div>
 
-          {/* Tracking ID Badge */}
           <div className="inline-flex items-center gap-3 bg-[#faf7f2] border border-[#e4ded3] rounded-2xl px-6 py-3.5 shadow-inner">
             <div className="text-left">
               <span className="text-[10px] uppercase tracking-wider text-[#738d81] block">
@@ -233,7 +230,6 @@ export default function Cart() {
           )}
         </div>
 
-        {/* Live Delivery Status Stepper */}
         <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-[#eee8dd] pb-4">
             <div>
@@ -260,7 +256,6 @@ export default function Cart() {
 
           <TrackingStepper currentStatus={completedOrder.status} />
 
-          {/* Initial Dispatch Checkpoint Note */}
           <div className="p-4 rounded-2xl bg-[#edf5ef] border border-[#cbe1d2] flex items-center gap-3">
             <MapPin className="w-4 h-4 text-[#2e7d4d] shrink-0" />
             <div className="text-xs text-[#162a1e]">
@@ -272,7 +267,6 @@ export default function Cart() {
           </div>
         </div>
 
-        {/* Order Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-[#e8e2d5] rounded-3xl p-6 shadow-sm space-y-4">
             <h3 className="text-xs uppercase tracking-widest font-bold text-[#1b3b27]">
@@ -625,6 +619,9 @@ export default function Cart() {
                   className="w-full px-4 py-2.5 text-sm rounded-xl bg-[#faf7f2] border border-[#dcd4c7] text-[#162a1e] placeholder-[#8e9f93] focus:outline-none focus:border-[#2e7d4d] transition-all"
                 />
               </div>
+
+              {/* Pincode & Dispatch Verification */}
+              <PincodeChecker />
 
               <div>
                 <label className="block text-xs font-semibold text-[#516859] mb-1.5">
