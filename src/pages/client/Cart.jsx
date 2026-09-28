@@ -17,10 +17,12 @@ import {
   CreditCard,
   Banknote,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
 import PincodeChecker from "../../components/PincodeChecker";
+import InvoiceModal from "../../components/InvoiceModal";
 
 export default function Cart() {
   const {
@@ -42,6 +44,9 @@ export default function Cart() {
   // Payment Selection State: 'cod' or 'online'
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Invoice Modal State
+  const [showInvoice, setShowInvoice] = useState(false);
 
   // Coupon States
   const [couponInput, setCouponInput] = useState("");
@@ -239,6 +244,8 @@ export default function Cart() {
 
     const generatedTrackingId = placeOrder({
       ...customer,
+      items: [...cart],
+      subtotal: subtotal,
       total_amount: finalPayable,
       discount_applied: discountAmount,
       coupon_code: appliedCoupon?.code || null,
@@ -358,7 +365,7 @@ export default function Cart() {
           <TrackingStepper currentStatus={completedOrder.status} />
 
           <div className="p-4 rounded-2xl bg-[#edf5ef] border border-[#cbe1d2] flex items-center gap-3">
-            <MapPin className="w-4 h-4 text-[#2e7d4d] shrink-0" />
+            <MapPin className="w-4 h-4 text-[#2e7d4d]" />
             <div className="text-xs text-[#162a1e]">
               <span className="font-bold text-[#1b3b27]">
                 Initial Dispatch Note:{" "}
@@ -436,7 +443,16 @@ export default function Cart() {
           </div>
         </div>
 
+        {/* Action Buttons: Invoice, Real-Time Tracking, Continue Shopping */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowInvoice(true)}
+            className="inline-flex items-center gap-2 px-7 py-3.5 bg-white border border-[#d2dfd5] hover:bg-[#edf5ef] text-[#1b3b27] text-xs font-bold uppercase tracking-wider rounded-full shadow-xs transition-all cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-[#2e7d4d]" /> View & Print Invoice
+          </button>
+
           <button
             type="button"
             onClick={() => navigate("/track")}
@@ -444,6 +460,7 @@ export default function Cart() {
           >
             <Truck className="w-4 h-4 text-[#2e7d4d]" /> Track In Real Time
           </button>
+
           <Link
             to="/shop"
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-md transition-all cursor-pointer"
@@ -451,6 +468,14 @@ export default function Cart() {
             <Compass className="w-4 h-4 text-[#c58f38]" /> Continue Shopping
           </Link>
         </div>
+
+        {/* Printable Invoice Modal (Fetches directly from backend by trackingId) */}
+        {showInvoice && (
+          <InvoiceModal
+            trackingId={completedOrder.trackingId}
+            onClose={() => setShowInvoice(false)}
+          />
+        )}
       </div>
     );
   }
