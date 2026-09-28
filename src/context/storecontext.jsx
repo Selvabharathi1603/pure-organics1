@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { auth, signOut } from "../config/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 const StoreContext = createContext();
 
@@ -13,16 +15,47 @@ export function StoreProvider({ children }) {
     }
   });
 
-  // 2. Cart Drawer Open/Close State (in case Navbar toggles a modal/drawer)
+  // 2. Drawer & Modal States
   const [isCartOpen, setIsCartOpen] = useState(false);
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
 
-  // 3. Products State
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
+  // 3. Customer Authentication State (Firebase)
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser({
+          uid: user.uid,
+          name: user.displayName || user.email?.split("@")[0] || "Patron",
+          email: user.email || "",
+          phone: user.phoneNumber || "",
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const logoutCustomer = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
+  // 4. Products State
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  // 4. Announcements & CMS Configuration State
+  // 5. Announcements & CMS Configuration State
   const [announcements, setAnnouncements] = useState({
     topBarNotice:
       "Seasonal Harvest Notice: Direct farm delivery across Tamil Nadu & Bangalore 🌾",
@@ -43,7 +76,7 @@ export function StoreProvider({ children }) {
     }
   }, [cart]);
 
-  // Fetch Products from TiDB Backend
+  // Fetch Products from Backend
   const fetchProducts = async () => {
     setLoadingProducts(true);
     try {
@@ -120,54 +153,31 @@ export function StoreProvider({ children }) {
     localStorage.removeItem("pure_organics_cart");
   };
 
-  // Place Order & Persist Complete Snapshot to TiDB Cloud
+  // Place Order: matches clean TiDB schema (tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note)
   const placeOrder = (orderPayload) => {
     const trackingId = "PO-" + Math.floor(100000 + Math.random() * 900000);
 
-    const snapshotItems =
-      orderPayload.items && orderPayload.items.length > 0
-        ? orderPayload.items
-        : [...cart];
-
-    const subtotalCalc = snapshotItems.reduce(
-      (sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1),
-      0,
-    );
-
-    const fullOrder = {
+    const orderRecord = {
       tracking_id: trackingId,
       customer_name: orderPayload.name || orderPayload.customer_name || "",
       customer_phone: orderPayload.phone || orderPayload.customer_phone || "",
       customer_address:
         orderPayload.address || orderPayload.customer_address || "",
       total_amount: Number(orderPayload.total_amount) || 0,
-      subtotal: Number(orderPayload.subtotal) || subtotalCalc,
-      discount:
-        Number(orderPayload.discount_applied || orderPayload.discount) || 0,
-      coupon_code: orderPayload.coupon_code || null,
-      payment_method: orderPayload.payment_method || "Cash on Delivery",
-      payment_ref: orderPayload.payment_ref || null,
       dispatch_note: "Order verified at farm collective. Awaiting packaging.",
-      items: snapshotItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        unit: item.unit,
-        qty: item.qty || 1,
-      })),
     };
 
     fetch("https://pure-organics1.onrender.com/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(fullOrder),
+      body: JSON.stringify(orderRecord),
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("✅ Order & Invoice saved to TiDB Cloud:", data);
+        console.log("✅ Order saved to TiDB Cloud:", data);
       })
       .catch((err) => {
-        console.error("❌ Failed to save order snapshot to backend:", err);
+        console.error("❌ Failed to save order to backend:", err);
       });
 
     clearCart();
@@ -182,6 +192,10 @@ export function StoreProvider({ children }) {
         setIsCartOpen,
         openCart,
         closeCart,
+        isAuthOpen,
+        setIsAuthOpen,
+        currentUser,
+        logoutCustomer,
         addToCart,
         updateQuantity,
         removeFromCart,
