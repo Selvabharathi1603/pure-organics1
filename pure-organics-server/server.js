@@ -9,12 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" })); // Supports image URLs and JSON payloads
 
-// Initialize Razorpay SDK instance using environment variables
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "placeholder_secret",
-});
-
 // Root Health-Check Route (fixes "Cannot GET /")
 app.get("/", (req, res) => {
   res.send("🌿 Pure Organics API server is live and running!");
@@ -222,7 +216,6 @@ app.post("/api/products", (req, res) => {
   });
 });
 
-// Update Existing Product Details
 app.put("/api/products/:id", (req, res) => {
   const { id } = req.params;
   const { name, category, price, unit, image, description } = req.body;
@@ -526,39 +519,71 @@ app.post("/api/auth/login", (req, res) => {
 // 1. Create order on Razorpay server
 app.post("/api/payment/create-order", async (req, res) => {
   try {
-    const { amount } = req.body; // Amount in rupees (e.g. 195)
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
-    if (!amount || Number(amount) <= 0) {
-      return res.status(400).json({ error: "Invalid payment amount" });
+    // Guard: Check if environment variables are missing on the host (e.g. Render)
+    if (!keyId || !keySecret || keyId === "rzp_test_placeholder") {
+      console.error("❌ RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not configured in server environment!");
+      return res.status(500).json({
+        error: "Razorpay API keys missing in server environment variables. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET on Render.",
+      });
     }
 
+    const { amount } = req.body; // Amount in rupees (e.g. 195)
+    const numericAmount = Number(amount);
+
+    if (!amount || isNaN(numericAmount) || numericAmount < 1) {
+      return res.status(400).json({ error: "Invalid payment amount. Minimum order amount is ₹1." });
+    }
+
+    // Initialize instance on demand to ensure latest env keys are used
+    const razorpayInstance = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+
     const options = {
-      amount: Math.round(Number(amount) * 100), // Convert INR to paise
+      amount: Math.round(numericAmount * 100), // Convert to paise
       currency: "INR",
-      receipt: `order_rcpt_${Date.now()}`,
+      receipt: `po_rcpt_${Date.now()}`,
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await razorpayInstance.orders.create(options);
 
     res.json({
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: keyId,
     });
   } catch (error) {
     console.error("Razorpay order creation failed:", error);
-    res.status(500).json({ error: "Unable to initiate payment with Razorpay" });
+    // Extract exact diagnostic error message from Razorpay API response
+    const detailedMessage =
+      error?.error?.description ||
+      error?.message ||
+      "Unable to initiate payment with Razorpay";
+    res.status(500).json({ error: detailedMessage });
   }
 });
 
 // 2. Cryptographically verify signature after payment
 app.post("/api/payment/verify", (req, res) => {
   try {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) {
+      return res.status(500).json({ error: "Server missing RAZORPAY_KEY_SECRET" });
+    }
+
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, error: "Missing required Razorpay parameters" });
+    }
+
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
+      .createHmac("sha256", keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
