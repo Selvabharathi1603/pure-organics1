@@ -519,14 +519,24 @@ app.post("/api/auth/login", (req, res) => {
 // 1. Create order on Razorpay server
 app.post("/api/payment/create-order", async (req, res) => {
   try {
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const rawKeyId = process.env.RAZORPAY_KEY_ID || "";
+    const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || "";
 
-    // Guard: Check if environment variables are missing on the host (e.g. Render)
+    const keyId = rawKeyId.trim();
+    const keySecret = rawKeySecret.trim();
+
+    // Guard: Validate environment variables on host
     if (!keyId || !keySecret || keyId === "rzp_test_placeholder") {
       console.error("❌ RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not configured in server environment!");
       return res.status(500).json({
-        error: "Razorpay API keys missing in server environment variables. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET on Render.",
+        error: "Razorpay API keys missing in server environment variables. Please check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET on Render.",
+      });
+    }
+
+    if (!keyId.startsWith("rzp_test_") && !keyId.startsWith("rzp_live_")) {
+      console.error("❌ Invalid Key ID format detected:", keyId);
+      return res.status(500).json({
+        error: "Invalid Razorpay Key ID format. Key ID must start with 'rzp_test_' or 'rzp_live_'.",
       });
     }
 
@@ -537,19 +547,26 @@ app.post("/api/payment/create-order", async (req, res) => {
       return res.status(400).json({ error: "Invalid payment amount. Minimum order amount is ₹1." });
     }
 
-    // Initialize instance on demand to ensure latest env keys are used
+    // Initialize instance on demand to ensure trimmed credentials are used
     const razorpayInstance = new Razorpay({
       key_id: keyId,
       key_secret: keySecret,
     });
 
+    const amountInPaise = Math.round(numericAmount * 100);
+    const receiptId = `po_rcpt_${Date.now()}`;
+
+    console.log(`Initiating Razorpay order: ₹${numericAmount} (${amountInPaise} paise) with Key ID: ${keyId}`);
+
     const options = {
-      amount: Math.round(numericAmount * 100), // Convert to paise
+      amount: amountInPaise,
       currency: "INR",
-      receipt: `po_rcpt_${Date.now()}`,
+      receipt: receiptId,
     };
 
     const order = await razorpayInstance.orders.create(options);
+
+    console.log(`✅ Razorpay order created successfully: ${order.id}`);
 
     res.json({
       orderId: order.id,
@@ -559,7 +576,6 @@ app.post("/api/payment/create-order", async (req, res) => {
     });
   } catch (error) {
     console.error("Razorpay order creation failed:", error);
-    // Extract exact diagnostic error message from Razorpay API response
     const detailedMessage =
       error?.error?.description ||
       error?.message ||
@@ -571,7 +587,9 @@ app.post("/api/payment/create-order", async (req, res) => {
 // 2. Cryptographically verify signature after payment
 app.post("/api/payment/verify", (req, res) => {
   try {
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const keySecret = rawKeySecret.trim();
+
     if (!keySecret) {
       return res.status(500).json({ error: "Server missing RAZORPAY_KEY_SECRET" });
     }
