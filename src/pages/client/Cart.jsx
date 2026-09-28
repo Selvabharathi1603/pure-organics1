@@ -57,8 +57,11 @@ export default function Cart() {
   const [copied, setCopied] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const totalCartItems = cart.reduce((sum, item) => sum + (item.qty || 1), 0);
-  const subtotal = cart.reduce(
+  const totalCartItems = (cart || []).reduce(
+    (sum, item) => sum + (item.qty || 1),
+    0,
+  );
+  const subtotal = (cart || []).reduce(
     (sum, item) => sum + item.price * (item.qty || 1),
     0,
   );
@@ -140,7 +143,7 @@ export default function Cart() {
     setCouponError("");
   };
 
-  // ⚡ Razorpay Online Payment Flow
+  // Razorpay Online Payment Flow
   const launchRazorpayPayment = async () => {
     if (!window.Razorpay) {
       setFormError("Razorpay SDK failed to load. Please refresh the page.");
@@ -151,7 +154,6 @@ export default function Cart() {
     setFormError("");
 
     try {
-      // 1. Create order on backend
       const res = await fetch(
         "https://pure-organics1.onrender.com/api/payment/create-order",
         {
@@ -165,7 +167,6 @@ export default function Cart() {
       if (!res.ok)
         throw new Error(orderData.error || "Failed to initialize payment");
 
-      // 2. Configure Razorpay modal
       const options = {
         key: orderData.keyId,
         amount: orderData.amount,
@@ -182,7 +183,6 @@ export default function Cart() {
         },
         handler: async function (response) {
           try {
-            // 3. Cryptographically verify signature on backend
             const verifyRes = await fetch(
               "https://pure-organics1.onrender.com/api/payment/verify",
               {
@@ -223,7 +223,6 @@ export default function Cart() {
     }
   };
 
-  // Finalize order record
   const completeOrderPlacement = (paymentLabel, paymentRef = null) => {
     const snapshot = {
       items: [...cart],
@@ -469,7 +468,7 @@ export default function Cart() {
           </Link>
         </div>
 
-        {/* Printable Invoice Modal (Fetches directly from backend by trackingId) */}
+        {/* Printable Invoice Modal */}
         {showInvoice && (
           <InvoiceModal
             trackingId={completedOrder.trackingId}
@@ -481,7 +480,7 @@ export default function Cart() {
   }
 
   // 2. EMPTY BASKET VIEW
-  if (cart.length === 0) {
+  if (!cart || cart.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-6">
         <div className="w-20 h-20 rounded-full bg-white border border-[#e8e2d5] flex items-center justify-center text-[#2e7d4d] mx-auto shadow-sm">

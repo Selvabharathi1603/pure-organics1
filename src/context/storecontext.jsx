@@ -13,11 +13,16 @@ export function StoreProvider({ children }) {
     }
   });
 
-  // 2. Products State
+  // 2. Cart Drawer Open/Close State (in case Navbar toggles a modal/drawer)
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+
+  // 3. Products State
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  // 3. Announcements & CMS Configuration State
+  // 4. Announcements & CMS Configuration State
   const [announcements, setAnnouncements] = useState({
     topBarNotice:
       "Seasonal Harvest Notice: Direct farm delivery across Tamil Nadu & Bangalore 🌾",
@@ -117,7 +122,6 @@ export function StoreProvider({ children }) {
 
   // Place Order & Persist Complete Snapshot to TiDB Cloud
   const placeOrder = (orderPayload) => {
-    // Generate unique readable tracking reference
     const trackingId = "PO-" + Math.floor(100000 + Math.random() * 900000);
 
     const snapshotItems =
@@ -153,7 +157,6 @@ export function StoreProvider({ children }) {
       })),
     };
 
-    // Asynchronously send to backend
     fetch("https://pure-organics1.onrender.com/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -167,9 +170,7 @@ export function StoreProvider({ children }) {
         console.error("❌ Failed to save order snapshot to backend:", err);
       });
 
-    // Clear cart immediately upon placement
     clearCart();
-
     return trackingId;
   };
 
@@ -177,6 +178,10 @@ export function StoreProvider({ children }) {
     <StoreContext.Provider
       value={{
         cart,
+        isCartOpen,
+        setIsCartOpen,
+        openCart,
+        closeCart,
         addToCart,
         updateQuantity,
         removeFromCart,
