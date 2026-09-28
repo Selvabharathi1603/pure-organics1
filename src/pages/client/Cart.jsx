@@ -17,6 +17,7 @@ import {
   CreditCard,
   Banknote,
   Loader2,
+  Send,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
@@ -33,11 +34,17 @@ export default function Cart() {
   } = useStore();
   const navigate = useNavigate();
 
+  // Store's official WhatsApp support mobile number (with country code, e.g., 91XXXXXXXXXX)
+  const STORE_WHATSAPP = "919876543210";
+
   const [customer, setCustomer] = useState({
     name: "",
     phone: "",
     address: "",
   });
+
+  // WhatsApp Notification Consent State
+  const [allowWhatsApp, setAllowWhatsApp] = useState(true);
 
   // Payment Selection State: 'cod' or 'online'
   const [paymentMethod, setPaymentMethod] = useState("cod");
@@ -71,6 +78,76 @@ export default function Cart() {
   }
 
   const finalPayable = Math.max(0, subtotal - discountAmount);
+
+  // ==========================================
+  // DIRECT WHATSAPP ACTIONS (Zero Cost, No Meta API)
+  // ==========================================
+
+  // 1. Send Cart Recovery / Basket Waiting Message
+  const handleSaveCartToWhatsApp = () => {
+    if (!cart || cart.length === 0) return;
+
+    const itemsSummary = cart
+      .map((item) => `• ${item.name} (${item.qty} × ₹${item.price})`)
+      .join("\n");
+
+    const message = `🌾 *Pure Organics - Your Harvest Basket is Waiting!*
+
+Hi! Here are the fresh items waiting in your basket:
+${itemsSummary}
+
+💰 *Subtotal:* ₹${subtotal}
+🚚 *Shipping:* Free Delivery across Tamil Nadu & Bangalore
+
+Finish your order and we will harvest fresh for you:
+👉 https://pure-organics1.vercel.app/cart`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  };
+
+  // 2. Opt-in for WhatsApp Seasonal Offers & Deals
+  const handleSubscribeOffersWhatsApp = () => {
+    const message = `🌿 *Pure Organics - Harvest Deals Request*
+
+Hello Pure Organics Team,
+Please send me exclusive seasonal discounts, harvest notices, and festival coupons on WhatsApp!
+
+Offer Code Interested In: ${announcements?.couponCode || "HARVEST10"}`;
+
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/${STORE_WHATSAPP}?text=${encoded}`, "_blank");
+  };
+
+  // 3. Send Order Confirmation Receipt to WhatsApp
+  const handleSendOrderWhatsApp = (orderData = null) => {
+    const order = orderData || completedOrder;
+    if (!order) return;
+
+    const message = `🌿 *Pure Organics - Order Placed Successfully!*
+
+Hello *${order.customer.name}*,
+Thank you for your native harvest booking!
+
+📦 *Tracking ID:* ${order.trackingId}
+💰 *Total Payable:* ₹${order.total}
+💳 *Payment Mode:* ${order.paymentMethod}
+📍 *Delivering To:* ${order.customer.address}
+
+🚚 *Status:* Placed
+🔗 Track your box anytime: https://pure-organics1.vercel.app/track?id=${order.trackingId}
+
+_Harvested with care directly from our regional farm collective._`;
+
+    const encoded = encodeURIComponent(message);
+    const rawPhone = order.customer.phone.replace(/\D/g, "");
+    const targetPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+
+    window.open(
+      `https://wa.me/${targetPhone || STORE_WHATSAPP}?text=${encoded}`,
+      "_blank",
+    );
+  };
 
   const handleApplyCoupon = (e) => {
     e.preventDefault();
@@ -247,13 +324,21 @@ export default function Cart() {
       payment_ref: paymentRef,
     });
 
-    setCompletedOrder({
+    const finalOrder = {
       ...snapshot,
       trackingId: generatedTrackingId,
       status: "Placed",
-    });
+    };
 
+    setCompletedOrder(finalOrder);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // If customer allowed WhatsApp updates, open WhatsApp with receipt
+    if (allowWhatsApp) {
+      setTimeout(() => {
+        handleSendOrderWhatsApp(finalOrder);
+      }, 700);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -437,8 +522,16 @@ export default function Cart() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons: WhatsApp Updates, Real-Time Tracking, Continue Shopping */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => handleSendOrderWhatsApp()}
+            className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-md transition-all cursor-pointer"
+          >
+            <Send className="w-4 h-4" /> Receive WhatsApp Update
+          </button>
+
           <button
             type="button"
             onClick={() => navigate("/track")}
@@ -487,6 +580,31 @@ export default function Cart() {
   // 3. CART + DELIVERY FORM VIEW
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      {/* Free WhatsApp Feature 1: Cart Waiting Notification Bar */}
+      <div className="bg-[#edf5ef] border border-[#cbe1d2] p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3 text-xs text-[#162a1e]">
+          <span className="p-2 rounded-xl bg-white text-[#25D366] shadow-2xs font-bold">
+            💬
+          </span>
+          <div>
+            <p className="font-bold text-[#1b3b27]">
+              Need time to decide? Your harvest cart is waiting for you!
+            </p>
+            <p className="text-[#5c7365]">
+              Save this cart to your WhatsApp so you don't lose items or current
+              prices.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleSaveCartToWhatsApp}
+          className="px-4 py-2 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+        >
+          <Send className="w-3.5 h-3.5" /> Save Cart to WhatsApp
+        </button>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e8e2d5] pb-5">
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#162a1e]">
@@ -669,6 +787,20 @@ export default function Cart() {
                 </div>
               </form>
             )}
+
+            {/* Free WhatsApp Feature 2: Receive Offers & Deals on WhatsApp */}
+            <div className="pt-3 border-t border-[#f2ece2] flex items-center justify-between text-xs">
+              <span className="text-stone-500 text-[11px]">
+                Want exclusive promo codes via WhatsApp?
+              </span>
+              <button
+                type="button"
+                onClick={handleSubscribeOffersWhatsApp}
+                className="text-[#25D366] hover:text-[#1eb854] font-bold text-xs flex items-center gap-1 cursor-pointer"
+              >
+                Get Offers ➔
+              </button>
+            </div>
           </div>
 
           {/* Delivery & Payment Selection Box */}
@@ -719,6 +851,20 @@ export default function Cart() {
                   }
                   className="w-full px-4 py-2.5 text-sm rounded-xl bg-[#faf7f2] border border-[#dcd4c7] text-[#162a1e] placeholder-[#8e9f93] focus:outline-none focus:border-[#2e7d4d] transition-all"
                 />
+
+                {/* WhatsApp Notification Consent Checkbox */}
+                <label className="mt-2.5 flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={allowWhatsApp}
+                    onChange={(e) => setAllowWhatsApp(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#2e7d4d] focus:ring-[#2e7d4d] border-stone-300 accent-[#2e7d4d] cursor-pointer"
+                  />
+                  <span className="text-[11px] text-stone-600 flex items-center gap-1.5 font-medium">
+                    <span className="text-[#25D366] text-sm font-bold">💬</span>{" "}
+                    Get instant tracking & order receipts on WhatsApp
+                  </span>
+                </label>
               </div>
 
               {/* Pincode & Dispatch Verification */}
