@@ -15,6 +15,11 @@ export const StoreProvider = ({ children }) => {
     }
   });
 
+  // Cart Drawer Open/Close State
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+
   // Catalog & Inventory States
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState(() => {
@@ -183,7 +188,7 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_admin_user");
   };
 
-  // Cart Handlers
+  // Cart Handlers: Adding item immediately opens the Cart Drawer
   const addToCart = (product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
@@ -194,6 +199,7 @@ export const StoreProvider = ({ children }) => {
       }
       return [...prev, { ...product, qty: 1 }];
     });
+    setIsCartOpen(true);
   };
 
   const updateQuantity = (id, change) => {
@@ -372,6 +378,10 @@ export const StoreProvider = ({ children }) => {
         deleteProduct,
         sendStockAlert,
         dismissAlert,
+        // Cart drawer controls
+        isCartOpen,
+        openCart,
+        closeCart,
       }}
     >
       {children}

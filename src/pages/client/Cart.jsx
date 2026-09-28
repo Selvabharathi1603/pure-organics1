@@ -23,7 +23,7 @@ import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
 import PincodeChecker from "../../components/PincodeChecker";
 
-export default function Cart() {
+export default function Cart({ isOpen, onClose }) {
   const {
     cart,
     updateQuantity,
@@ -270,6 +270,15 @@ export default function Cart() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Close helper
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate(-1);
+    }
+  };
+
   // 1. ORDER CONFIRMED VIEW
   if (completedOrder) {
     return (
@@ -447,7 +456,7 @@ export default function Cart() {
 
   // 2. EMPTY BASKET VIEW
   if (!cart || cart.length === 0) {
-    return (
+    const emptyContent = (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-6">
         <div className="w-20 h-20 rounded-full bg-white border border-[#e8e2d5] flex items-center justify-center text-[#2e7d4d] mx-auto shadow-sm">
           <ShoppingBag className="w-9 h-9" />
@@ -461,20 +470,43 @@ export default function Cart() {
             oils.
           </p>
         </div>
-        <Link
-          to="/shop"
-          className="inline-flex items-center gap-2 px-7 py-3 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-md transition-all"
+        <button
+          onClick={handleClose}
+          className="inline-flex items-center gap-2 px-7 py-3 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-md transition-all cursor-pointer"
         >
           Explore Catalog <ArrowRight className="w-4 h-4 text-[#c58f38]" />
-        </Link>
+        </button>
       </div>
     );
+
+    if (isOpen !== undefined) {
+      if (!isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-50 overflow-hidden bg-black/40 backdrop-blur-xs flex justify-end">
+          <div className="w-full max-w-md bg-[#faf7f2] h-full shadow-2xl p-6 flex flex-col justify-between">
+            <div className="flex justify-between items-center border-b pb-4">
+              <h2 className="font-serif font-bold text-lg">Shopping Basket</h2>
+              <button
+                onClick={handleClose}
+                className="p-1 rounded-full hover:bg-stone-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5 text-stone-600" />
+              </button>
+            </div>
+            {emptyContent}
+          </div>
+        </div>
+      );
+    }
+
+    return emptyContent;
   }
 
-  // 3. CART + DELIVERY FORM VIEW
-  return (
+  // 3. CART CONTENT LAYOUT
+  const cartContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e8e2d5] pb-5">
+      {/* Top Bar with Close / Back trigger */}
+      <div className="flex items-center justify-between gap-4 border-b border-[#e8e2d5] pb-5">
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-normal text-[#162a1e]">
             Shopping Basket
@@ -483,12 +515,12 @@ export default function Cart() {
             Review selections, apply harvest vouchers, and complete your order.
           </p>
         </div>
-        <Link
-          to="/shop"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1b3b27] hover:text-[#2e7d4d] transition-colors"
+        <button
+          onClick={handleClose}
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-[#edf5ef] border border-[#dcd4c7] rounded-xl text-xs font-semibold text-[#1b3b27] transition-all cursor-pointer shadow-xs"
         >
           <ArrowLeft className="w-4 h-4" /> Continue Shopping
-        </Link>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -733,7 +765,6 @@ export default function Cart() {
                     </div>
                   </div>
 
-                  {/* Modern Toggle Indicator */}
                   <div
                     className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
                       allowWhatsApp
@@ -863,4 +894,26 @@ export default function Cart() {
       </div>
     </div>
   );
+
+  // If used as a Modal/Drawer Overlay (from clicking Add to Cart in Shop)
+  if (isOpen !== undefined) {
+    if (!isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+        <div className="w-full max-w-2xl bg-[#faf7f2] min-h-screen shadow-2xl p-6 sm:p-8 relative">
+          <button
+            onClick={handleClose}
+            className="absolute top-5 right-5 p-2 rounded-full bg-white hover:bg-stone-200 text-stone-700 transition-colors shadow-sm cursor-pointer"
+            title="Close Cart"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          {cartContent}
+        </div>
+      </div>
+    );
+  }
+
+  // Normal standalone page view
+  return cartContent;
 }
