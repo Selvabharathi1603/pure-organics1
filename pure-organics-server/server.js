@@ -7,14 +7,14 @@ const Razorpay = require("razorpay");
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "10mb" })); // Supports image URLs and JSON payloads
+app.use(express.json({ limit: "10mb" }));
 
-// Root Health-Check Route (fixes "Cannot GET /")
+// Root Health-Check Route
 app.get("/", (req, res) => {
   res.send("🌿 Pure Organics API server is live and running!");
 });
 
-// Detect if running against a cloud database provider like TiDB/Aiven
+// Detect cloud database provider (TiDB / Aiven)
 const isCloudDatabase = Boolean(
   process.env.DB_HOST &&
   (process.env.DB_HOST.includes("tidbcloud.com") ||
@@ -22,7 +22,7 @@ const isCloudDatabase = Boolean(
    process.env.DB_PORT === "4000")
 );
 
-// MySQL connection pool configured for both local and cloud TLS instances
+// MySQL connection pool
 const db = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT) || (isCloudDatabase ? 4000 : 3306),
@@ -32,7 +32,7 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  multipleStatements: true, // Enables batch queries for admin analytics
+  multipleStatements: true,
   ...(isCloudDatabase && {
     ssl: {
       minVersion: "TLSv1.2",
@@ -41,14 +41,14 @@ const db = mysql.createPool({
   }),
 });
 
-// Verify connection & ensure required tables exist
+// Verify connection & ensure required tables and columns exist
 db.getConnection((err, conn) => {
   if (err) {
     console.error("❌ MySQL Connection Failed:", err.message);
   } else {
     console.log(`✅ Successfully connected to MySQL Database: ${process.env.DB_NAME || "pure_organics"}`);
 
-    // 1. Auto-create products table if not exists
+    // 1. Auto-create products table
     conn.query(`
       CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,7 +63,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 2. Auto-create orders table if not exists
+    // 2. Auto-create orders table (includes full billing/invoice columns)
     conn.query(`
       CREATE TABLE IF NOT EXISTS orders (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -74,11 +74,17 @@ db.getConnection((err, conn) => {
         total_amount DECIMAL(10,2) NOT NULL,
         status VARCHAR(50) DEFAULT 'Placed',
         dispatch_note TEXT,
+        items JSON NULL,
+        subtotal DECIMAL(10,2) DEFAULT 0.00,
+        discount DECIMAL(10,2) DEFAULT 0.00,
+        coupon_code VARCHAR(50) DEFAULT NULL,
+        payment_method VARCHAR(100) DEFAULT 'Cash on Delivery',
+        payment_ref VARCHAR(100) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // 3. Auto-create users table if not exists
+    // 3. Auto-create users table
     conn.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -90,7 +96,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 4. Auto-create newsletter table if not exists
+    // 4. Auto-create newsletter table
     conn.query(`
       CREATE TABLE IF NOT EXISTS newsletter_subscribers (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,7 +105,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 5. Auto-create discount leads table if not exists
+    // 5. Auto-create discount leads table
     conn.query(`
       CREATE TABLE IF NOT EXISTS discount_leads (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -110,7 +116,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 6. Auto-create search & filter analytics table if not exists
+    // 6. Auto-create search & filter analytics table
     conn.query(`
       CREATE TABLE IF NOT EXISTS search_analytics (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,7 +126,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 7. Auto-create homepage CMS table if not exists
+    // 7. Auto-create homepage CMS table
     conn.query(`
       CREATE TABLE IF NOT EXISTS homepage_cms (
         section_key VARCHAR(100) PRIMARY KEY,
@@ -128,7 +134,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 8. Auto-create serviceable pincodes table if not exists
+    // 8. Auto-create serviceable pincodes table
     conn.query(`
       CREATE TABLE IF NOT EXISTS serviceable_pincodes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -156,7 +162,7 @@ db.getConnection((err, conn) => {
       ON DUPLICATE KEY UPDATE content = VALUES(content)
     `, [defaultDiscountModal]);
 
-    // Seed default admin users if table is empty
+    // Seed default admin users
     conn.query("SELECT COUNT(*) AS count FROM users", (err, res) => {
       if (!err && res[0].count === 0) {
         const defaultUsers = [
@@ -169,7 +175,7 @@ db.getConnection((err, conn) => {
       }
     });
 
-    // Seed initial serviceable pincodes safely without duplicates
+    // Seed initial serviceable pincodes
     const seedPincodes = `
       INSERT INTO serviceable_pincodes (pincode, district, state, delivery_days, cod_available, shipping_charge)
       VALUES
@@ -248,7 +254,7 @@ app.delete("/api/products/:id", (req, res) => {
 });
 
 // ==========================================
-// 2. PINCODE SERVICEABILITY ROUTE (TiDB Cloud)
+// 2. PINCODE SERVICEABILITY ROUTE
 // ==========================================
 
 app.get("/api/pincodes/check/:pincode", (req, res) => {
@@ -291,9 +297,10 @@ app.get("/api/pincodes/check/:pincode", (req, res) => {
 });
 
 // ==========================================
-// 3. ORDERS ROUTES
+// 3. ORDERS & INVOICE ROUTES
 // ==========================================
 
+// Get all orders (for Admin Desk)
 app.get("/api/orders", (req, res) => {
   db.query("SELECT * FROM orders ORDER BY id DESC", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -301,18 +308,115 @@ app.get("/api/orders", (req, res) => {
   });
 });
 
+// Fetch Single Order Invoice by Tracking ID
+app.get("/api/orders/:trackingId", (req, res) => {
+  const { trackingId } = req.params;
+  const sql = "SELECT * FROM orders WHERE tracking_id = ?";
+
+  db.query(sql, [trackingId], (err, results) => {
+    if (err) {
+      console.error("Fetch invoice error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "No invoice found for this tracking ID." });
+    }
+
+    const order = results[0];
+
+    let parsedItems = [];
+    try {
+      parsedItems = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []);
+    } catch {
+      parsedItems = [];
+    }
+
+    res.json({
+      trackingId: order.tracking_id,
+      date: new Date(order.created_at).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      customer: {
+        name: order.customer_name,
+        phone: order.customer_phone,
+        address: order.customer_address,
+      },
+      items: parsedItems,
+      subtotal: Number(order.subtotal || order.total_amount),
+      discount: Number(order.discount || 0),
+      total: Number(order.total_amount),
+      couponCode: order.coupon_code,
+      paymentMethod: order.payment_method || "Cash on Delivery",
+      paymentRef: order.payment_ref,
+      status: order.status,
+      dispatchNote: order.dispatch_note,
+    });
+  });
+});
+
+// Place and Store Complete Order Snapshot in TiDB
 app.post("/api/orders", (req, res) => {
-  const { tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note } = req.body;
+  const {
+    tracking_id,
+    customer_name,
+    customer_phone,
+    customer_address,
+    total_amount,
+    dispatch_note,
+    items,
+    subtotal,
+    discount,
+    coupon_code,
+    payment_method,
+    payment_ref,
+  } = req.body;
+
   const sql = `
-    INSERT INTO orders (tracking_id, customer_name, customer_phone, customer_address, total_amount, status, dispatch_note)
-    VALUES (?, ?, ?, ?, ?, 'Placed', ?)
+    INSERT INTO orders (
+      tracking_id, 
+      customer_name, 
+      customer_phone, 
+      customer_address, 
+      total_amount, 
+      status, 
+      dispatch_note, 
+      items, 
+      subtotal, 
+      discount, 
+      coupon_code, 
+      payment_method, 
+      payment_ref
+    )
+    VALUES (?, ?, ?, ?, ?, 'Placed', ?, ?, ?, ?, ?, ?, ?)
   `;
+
+  const serializedItems = JSON.stringify(items || []);
+
   db.query(
     sql,
-    [tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note],
+    [
+      tracking_id,
+      customer_name,
+      customer_phone,
+      customer_address,
+      total_amount,
+      dispatch_note || "Order verified at farm collective. Awaiting packaging.",
+      serializedItems,
+      subtotal || total_amount,
+      discount || 0,
+      coupon_code || null,
+      payment_method || "Cash on Delivery",
+      payment_ref || null,
+    ],
     (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id: result.insertId, message: "Order stored" });
+      if (err) {
+        console.error("Order save error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({ id: result.insertId, tracking_id, message: "Order stored successfully" });
     }
   );
 });
@@ -331,7 +435,7 @@ app.patch("/api/orders/:trackingId/status", (req, res) => {
 });
 
 // ==========================================
-// 4. HOMEPAGE CMS ROUTES (Database Controlled)
+// 4. HOMEPAGE CMS ROUTES
 // ==========================================
 
 app.get("/api/cms/homepage", (req, res) => {
@@ -525,7 +629,6 @@ app.post("/api/payment/create-order", async (req, res) => {
     const keyId = rawKeyId.trim();
     const keySecret = rawKeySecret.trim();
 
-    // Guard: Validate environment variables on host
     if (!keyId || !keySecret || keyId === "rzp_test_placeholder") {
       console.error("❌ RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not configured in server environment!");
       return res.status(500).json({
@@ -540,14 +643,13 @@ app.post("/api/payment/create-order", async (req, res) => {
       });
     }
 
-    const { amount } = req.body; // Amount in rupees (e.g. 195)
+    const { amount } = req.body;
     const numericAmount = Number(amount);
 
     if (!amount || isNaN(numericAmount) || numericAmount < 1) {
       return res.status(400).json({ error: "Invalid payment amount. Minimum order amount is ₹1." });
     }
 
-    // Initialize instance on demand to ensure trimmed credentials are used
     const razorpayInstance = new Razorpay({
       key_id: keyId,
       key_secret: keySecret,
