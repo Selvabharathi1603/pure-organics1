@@ -63,7 +63,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 2. Orders table (clean schema)
+    // 2. Orders table
     conn.query(`
       CREATE TABLE IF NOT EXISTS orders (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -301,7 +301,6 @@ app.get("/api/orders", (req, res) => {
   });
 });
 
-// Save order to database (clean original)
 app.post("/api/orders", (req, res) => {
   const {
     tracking_id,
@@ -525,7 +524,7 @@ app.get("/api/admin/analytics", (req, res) => {
 });
 
 // ==========================================
-// 7. AUTHENTICATION & CUSTOMER SYNC
+// 7. ADMIN AUTHENTICATION
 // ==========================================
 
 app.post("/api/auth/login", (req, res) => {
@@ -540,33 +539,10 @@ app.post("/api/auth/login", (req, res) => {
   });
 });
 
-// Sync verified Firebase customer profile to TiDB Cloud
-app.post("/api/auth/sync-customer", (req, res) => {
-  const { firebase_uid, name, email, phone } = req.body;
-
-  const sql = `
-    INSERT INTO users (username, name, role, badge, password)
-    VALUES (?, ?, 'CUSTOMER', 'Customer Member', 'FIREBASE_AUTH')
-    ON DUPLICATE KEY UPDATE 
-      name = VALUES(name);
-  `;
-
-  const identifier = email || phone || firebase_uid;
-
-  db.query(sql, [identifier, name || "Pure Organics Patron"], (err) => {
-    if (err) {
-      console.error("User sync error:", err.message);
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ success: true, message: "Customer profile synced to TiDB" });
-  });
-});
-
 // ==========================================
 // 8. ONLINE PAYMENT ROUTES (Razorpay)
 // ==========================================
 
-// 1. Create order on Razorpay server
 app.post("/api/payment/create-order", async (req, res) => {
   try {
     const rawKeyId = process.env.RAZORPAY_KEY_ID || "";
@@ -632,7 +608,6 @@ app.post("/api/payment/create-order", async (req, res) => {
   }
 });
 
-// 2. Cryptographically verify signature after payment
 app.post("/api/payment/verify", (req, res) => {
   try {
     const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || "";
