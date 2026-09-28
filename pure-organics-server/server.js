@@ -41,14 +41,14 @@ const db = mysql.createPool({
   }),
 });
 
-// Verify connection & ensure required tables and columns exist
+// Verify connection & ensure required tables exist
 db.getConnection((err, conn) => {
   if (err) {
     console.error("❌ MySQL Connection Failed:", err.message);
   } else {
     console.log(`✅ Successfully connected to MySQL Database: ${process.env.DB_NAME || "pure_organics"}`);
 
-    // 1. Auto-create products table
+    // 1. Products table
     conn.query(`
       CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,7 +63,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 2. Auto-create orders table (includes full billing/invoice columns)
+    // 2. Orders table (clean original)
     conn.query(`
       CREATE TABLE IF NOT EXISTS orders (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -74,17 +74,11 @@ db.getConnection((err, conn) => {
         total_amount DECIMAL(10,2) NOT NULL,
         status VARCHAR(50) DEFAULT 'Placed',
         dispatch_note TEXT,
-        items JSON NULL,
-        subtotal DECIMAL(10,2) DEFAULT 0.00,
-        discount DECIMAL(10,2) DEFAULT 0.00,
-        coupon_code VARCHAR(50) DEFAULT NULL,
-        payment_method VARCHAR(100) DEFAULT 'Cash on Delivery',
-        payment_ref VARCHAR(100) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // 3. Auto-create users table
+    // 3. Users table
     conn.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -96,7 +90,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 4. Auto-create newsletter table
+    // 4. Newsletter table
     conn.query(`
       CREATE TABLE IF NOT EXISTS newsletter_subscribers (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -105,7 +99,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 5. Auto-create discount leads table
+    // 5. Discount leads table
     conn.query(`
       CREATE TABLE IF NOT EXISTS discount_leads (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -116,7 +110,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 6. Auto-create search & filter analytics table
+    // 6. Search & filter analytics table
     conn.query(`
       CREATE TABLE IF NOT EXISTS search_analytics (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -126,7 +120,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 7. Auto-create homepage CMS table
+    // 7. Homepage CMS table
     conn.query(`
       CREATE TABLE IF NOT EXISTS homepage_cms (
         section_key VARCHAR(100) PRIMARY KEY,
@@ -134,7 +128,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 8. Auto-create serviceable pincodes table
+    // 8. Serviceable pincodes table
     conn.query(`
       CREATE TABLE IF NOT EXISTS serviceable_pincodes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -297,10 +291,9 @@ app.get("/api/pincodes/check/:pincode", (req, res) => {
 });
 
 // ==========================================
-// 3. ORDERS & INVOICE ROUTES
+// 3. ORDERS ROUTES
 // ==========================================
 
-// Get all orders (for Admin Desk)
 app.get("/api/orders", (req, res) => {
   db.query("SELECT * FROM orders ORDER BY id DESC", (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -308,56 +301,7 @@ app.get("/api/orders", (req, res) => {
   });
 });
 
-// Fetch Single Order Invoice by Tracking ID
-app.get("/api/orders/:trackingId", (req, res) => {
-  const { trackingId } = req.params;
-  const sql = "SELECT * FROM orders WHERE tracking_id = ?";
-
-  db.query(sql, [trackingId], (err, results) => {
-    if (err) {
-      console.error("Fetch invoice error:", err);
-      return res.status(500).json({ error: err.message });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({ error: "No invoice found for this tracking ID." });
-    }
-
-    const order = results[0];
-
-    let parsedItems = [];
-    try {
-      parsedItems = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []);
-    } catch {
-      parsedItems = [];
-    }
-
-    res.json({
-      trackingId: order.tracking_id,
-      date: new Date(order.created_at).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-      customer: {
-        name: order.customer_name,
-        phone: order.customer_phone,
-        address: order.customer_address,
-      },
-      items: parsedItems,
-      subtotal: Number(order.subtotal || order.total_amount),
-      discount: Number(order.discount || 0),
-      total: Number(order.total_amount),
-      couponCode: order.coupon_code,
-      paymentMethod: order.payment_method || "Cash on Delivery",
-      paymentRef: order.payment_ref,
-      status: order.status,
-      dispatchNote: order.dispatch_note,
-    });
-  });
-});
-
-// Place and Store Complete Order Snapshot in TiDB
+// Save order to database (clean original)
 app.post("/api/orders", (req, res) => {
   const {
     tracking_id,
@@ -366,12 +310,6 @@ app.post("/api/orders", (req, res) => {
     customer_address,
     total_amount,
     dispatch_note,
-    items,
-    subtotal,
-    discount,
-    coupon_code,
-    payment_method,
-    payment_ref,
   } = req.body;
 
   const sql = `
@@ -382,18 +320,10 @@ app.post("/api/orders", (req, res) => {
       customer_address, 
       total_amount, 
       status, 
-      dispatch_note, 
-      items, 
-      subtotal, 
-      discount, 
-      coupon_code, 
-      payment_method, 
-      payment_ref
+      dispatch_note
     )
-    VALUES (?, ?, ?, ?, ?, 'Placed', ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, 'Placed', ?)
   `;
-
-  const serializedItems = JSON.stringify(items || []);
 
   db.query(
     sql,
@@ -404,12 +334,6 @@ app.post("/api/orders", (req, res) => {
       customer_address,
       total_amount,
       dispatch_note || "Order verified at farm collective. Awaiting packaging.",
-      serializedItems,
-      subtotal || total_amount,
-      discount || 0,
-      coupon_code || null,
-      payment_method || "Cash on Delivery",
-      payment_ref || null,
     ],
     (err, result) => {
       if (err) {
