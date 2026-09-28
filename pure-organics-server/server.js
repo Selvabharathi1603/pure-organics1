@@ -2,10 +2,18 @@ require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
+const crypto = require("crypto");
+const Razorpay = require("razorpay");
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" })); // Supports image URLs and JSON payloads
+
+// Initialize Razorpay SDK instance using environment variables
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "placeholder_secret",
+});
 
 // Root Health-Check Route (fixes "Cannot GET /")
 app.get("/", (req, res) => {
@@ -509,6 +517,60 @@ app.post("/api/auth/login", (req, res) => {
     }
     res.json({ success: true, user: results[0] });
   });
+});
+
+// ==========================================
+// 8. ONLINE PAYMENT ROUTES (Razorpay)
+// ==========================================
+
+// 1. Create order on Razorpay server
+app.post("/api/payment/create-order", async (req, res) => {
+  try {
+    const { amount } = req.body; // Amount in rupees (e.g. 195)
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({ error: "Invalid payment amount" });
+    }
+
+    const options = {
+      amount: Math.round(Number(amount) * 100), // Convert INR to paise
+      currency: "INR",
+      receipt: `order_rcpt_${Date.now()}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error) {
+    console.error("Razorpay order creation failed:", error);
+    res.status(500).json({ error: "Unable to initiate payment with Razorpay" });
+  }
+});
+
+// 2. Cryptographically verify signature after payment
+app.post("/api/payment/verify", (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (generatedSignature === razorpay_signature) {
+      return res.json({ success: true, message: "Payment verified successfully" });
+    } else {
+      return res.status(400).json({ success: false, error: "Signature verification failed" });
+    }
+  } catch (err) {
+    console.error("Signature verification error:", err);
+    res.status(500).json({ error: "Payment verification failed" });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

@@ -14,6 +14,9 @@ import {
   Tag,
   X,
   Sparkles,
+  CreditCard,
+  Banknote,
+  Loader2,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
@@ -36,6 +39,10 @@ export default function Cart() {
     address: "",
   });
 
+  // Payment Selection State: 'cod' or 'online'
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Coupon States
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -51,7 +58,6 @@ export default function Cart() {
     0,
   );
 
-  // Calculate discount based on valid coupons
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === "percentage") {
@@ -63,7 +69,6 @@ export default function Cart() {
 
   const finalPayable = Math.max(0, subtotal - discountAmount);
 
-  // Coupon Validation Handler
   const handleApplyCoupon = (e) => {
     e.preventDefault();
     setCouponError("");
@@ -130,6 +135,126 @@ export default function Cart() {
     setCouponError("");
   };
 
+  // ⚡ Razorpay Online Payment Flow
+  const launchRazorpayPayment = async () => {
+    if (!window.Razorpay) {
+      setFormError("Razorpay SDK failed to load. Please refresh the page.");
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    setFormError("");
+
+    try {
+      // 1. Create order on backend
+      const res = await fetch(
+        "https://pure-organics1.onrender.com/api/payment/create-order",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: finalPayable }),
+        },
+      );
+
+      const orderData = await res.json();
+      if (!res.ok)
+        throw new Error(orderData.error || "Failed to initialize payment");
+
+      // 2. Configure Razorpay modal
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Pure Organics",
+        description: "Direct Farm Harvest Payment",
+        order_id: orderData.orderId,
+        prefill: {
+          name: customer.name,
+          contact: customer.phone,
+        },
+        theme: {
+          color: "#1b3b27",
+        },
+        handler: async function (response) {
+          try {
+            // 3. Cryptographically verify signature on backend
+            const verifyRes = await fetch(
+              "https://pure-organics1.onrender.com/api/payment/verify",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(response),
+              },
+            );
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              completeOrderPlacement(
+                "Paid Online via UPI/Card (Razorpay)",
+                response.razorpay_payment_id,
+              );
+            } else {
+              setFormError(
+                "Payment verification failed on the server. Please contact support.",
+              );
+            }
+          } catch (err) {
+            setFormError("Error verifying payment signature: " + err.message);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessingPayment(false);
+          },
+        },
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.open();
+    } catch (err) {
+      setFormError(err.message || "Failed to initiate online checkout.");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Finalize order record
+  const completeOrderPlacement = (paymentLabel, paymentRef = null) => {
+    const snapshot = {
+      items: [...cart],
+      subtotal: subtotal,
+      discount: discountAmount,
+      total: finalPayable,
+      couponCode: appliedCoupon?.code || null,
+      customer: { ...customer },
+      date: new Date().toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      paymentMethod: paymentLabel,
+      paymentRef: paymentRef,
+      dispatchNote: "Order verified at farm collective. Awaiting packaging.",
+    };
+
+    const generatedTrackingId = placeOrder({
+      ...customer,
+      total_amount: finalPayable,
+      discount_applied: discountAmount,
+      coupon_code: appliedCoupon?.code || null,
+      payment_method: paymentLabel,
+      payment_ref: paymentRef,
+    });
+
+    setCompletedOrder({
+      ...snapshot,
+      trackingId: generatedTrackingId,
+      status: "Placed",
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -144,35 +269,11 @@ export default function Cart() {
 
     setFormError("");
 
-    const snapshot = {
-      items: [...cart],
-      subtotal: subtotal,
-      discount: discountAmount,
-      total: finalPayable,
-      couponCode: appliedCoupon?.code || null,
-      customer: { ...customer },
-      date: new Date().toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-      dispatchNote: "Order verified at farm collective. Awaiting packaging.",
-    };
-
-    const generatedTrackingId = placeOrder({
-      ...customer,
-      total_amount: finalPayable,
-      discount_applied: discountAmount,
-      coupon_code: appliedCoupon?.code || null,
-    });
-
-    setCompletedOrder({
-      ...snapshot,
-      trackingId: generatedTrackingId,
-      status: "Placed",
-    });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (paymentMethod === "online") {
+      launchRazorpayPayment();
+    } else {
+      completeOrderPlacement("Cash on Delivery (Pay upon arrival)");
+    }
   };
 
   const copyTrackingId = (id) => {
@@ -198,8 +299,8 @@ export default function Cart() {
               Thank You for Supporting Native Harvests
             </h1>
             <p className="text-xs sm:text-sm text-[#5c7365] max-w-lg mx-auto">
-              Your harvest package has been recorded. Pay via Cash on Delivery
-              when the parcel arrives at your doorstep.
+              Your harvest package has been recorded. Payment Status:{" "}
+              <strong>{completedOrder.paymentMethod}</strong>
             </p>
           </div>
 
@@ -237,7 +338,7 @@ export default function Cart() {
                 Delivery Status
               </h2>
               <p className="text-xs text-[#6d8274]">
-                Cash on Delivery:{" "}
+                Total Amount:{" "}
                 <span className="text-[#1b3b27] font-bold">
                   ₹{completedOrder.total}
                 </span>
@@ -303,9 +404,7 @@ export default function Cart() {
                 </div>
               )}
               <div className="flex justify-between items-center text-sm font-bold pt-1 border-t border-[#f2ece2]">
-                <span className="text-[#162a1e]">
-                  Total Payable on Delivery:
-                </span>
+                <span className="text-[#162a1e]">Total:</span>
                 <span className="font-serif text-lg text-[#1b3b27]">
                   ₹{completedOrder.total}
                 </span>
@@ -331,7 +430,7 @@ export default function Cart() {
                 {completedOrder.customer.address}
               </p>
               <p className="text-[#2e7d4d] font-semibold pt-1">
-                Payment Method: Cash on Delivery
+                Mode: {completedOrder.paymentMethod}
               </p>
             </div>
           </div>
@@ -391,8 +490,7 @@ export default function Cart() {
             Shopping Basket
           </h1>
           <p className="text-xs text-[#5c7365] mt-1">
-            Review selections, apply harvest vouchers, and enter delivery
-            details for COD.
+            Review selections, apply harvest vouchers, and complete your order.
           </p>
         </div>
         <Link
@@ -486,9 +584,9 @@ export default function Cart() {
           </div>
         </div>
 
-        {/* Right: Checkout & Coupon Form */}
+        {/* Right: Checkout & Payment Section */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Coupon / Voucher Redemption Box */}
+          {/* Coupon Redemption Box */}
           <div className="bg-white rounded-3xl border border-[#e8e2d5] p-6 shadow-sm space-y-4">
             <div className="flex items-center gap-2">
               <Tag className="w-4 h-4 text-[#e0b253]" />
@@ -570,14 +668,14 @@ export default function Cart() {
             )}
           </div>
 
-          {/* Delivery & Place Order Box */}
+          {/* Delivery & Payment Selection Box */}
           <div className="bg-white rounded-3xl border border-[#e8e2d5] p-6 sm:p-8 shadow-sm space-y-6">
             <div className="border-b border-[#eee8dd] pb-4">
               <h2 className="font-serif text-lg font-bold text-[#162a1e]">
-                Delivery Details
+                Delivery & Payment
               </h2>
               <p className="text-xs text-[#6d8274] mt-0.5">
-                Cash on Delivery (Pay upon arrival)
+                Choose online UPI/card payment or cash on delivery.
               </p>
             </div>
 
@@ -639,6 +737,40 @@ export default function Cart() {
                 />
               </div>
 
+              {/* Payment Method Selector */}
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-xs font-semibold text-[#516859]">
+                  Select Payment Option *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("cod")}
+                    className={`p-3 rounded-2xl border text-xs font-semibold text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 ${
+                      paymentMethod === "cod"
+                        ? "border-[#1b3b27] bg-[#edf5ef] text-[#1b3b27] shadow-xs"
+                        : "border-[#e8e2d5] bg-white text-stone-600 hover:border-stone-400"
+                    }`}
+                  >
+                    <Banknote className="w-4 h-4 text-[#2e7d4d]" />
+                    <span>Cash on Delivery</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("online")}
+                    className={`p-3 rounded-2xl border text-xs font-semibold text-center cursor-pointer transition-all flex flex-col items-center gap-1.5 ${
+                      paymentMethod === "online"
+                        ? "border-[#1b3b27] bg-[#edf5ef] text-[#1b3b27] shadow-xs"
+                        : "border-[#e8e2d5] bg-white text-stone-600 hover:border-stone-400"
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4 text-[#2e7d4d]" />
+                    <span>Pay Online (UPI / Card)</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Price Calculation Breakdown */}
               <div className="bg-[#faf7f2] p-4 rounded-2xl border border-[#e8e2d5] space-y-2 text-xs">
                 <div className="flex justify-between text-[#516859]">
@@ -666,7 +798,11 @@ export default function Cart() {
                 </div>
 
                 <div className="flex justify-between text-sm font-bold text-[#162a1e] pt-2 border-t border-[#e8e2d5]">
-                  <span>Payable on Delivery</span>
+                  <span>
+                    {paymentMethod === "online"
+                      ? "Total Payable Now"
+                      : "Payable on Delivery"}
+                  </span>
                   <span className="text-[#1b3b27] font-serif text-base">
                     ₹{finalPayable}
                   </span>
@@ -675,14 +811,24 @@ export default function Cart() {
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all active:scale-98 cursor-pointer"
+                disabled={isProcessingPayment}
+                className="w-full py-3.5 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                Confirm & Place Order (₹{finalPayable})
+                {isProcessingPayment && (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                )}
+                <span>
+                  {paymentMethod === "online"
+                    ? `Pay ₹${finalPayable} Online Now`
+                    : `Confirm & Place Order (₹${finalPayable})`}
+                </span>
               </button>
 
               <p className="flex items-center justify-center gap-1.5 text-[11px] text-[#738d81] pt-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#2e7d4d]" />
-                No advance payment needed • Inspect items on arrival
+                {paymentMethod === "online"
+                  ? "Secured 256-bit encrypted checkout via Razorpay"
+                  : "No advance payment needed • Inspect items on arrival"}
               </p>
             </form>
           </div>
