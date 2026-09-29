@@ -636,7 +636,7 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Stable Auto-Fallback Gemini Endpoint)
+// 9. REAL-TIME AI ASSISTANT (Active v1beta Model Pool with 503 Auto-Retry)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
@@ -723,56 +723,67 @@ Guidelines:
 
     const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 4. Stable Multi-Model Waterfall: Tries stable production 1.5 flash, then variants
-    const modelsToTry = [
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-pro"
+    // 4. Active supported models for this project's v1beta tier
+    const supportedModels = [
+      "gemini-3.8-flash",
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite"
     ];
 
     let aiReply = null;
     let lastError = null;
 
-    for (const modelName of modelsToTry) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": geminiKey,
-          },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: systemPrompt }],
+    for (const modelName of supportedModels) {
+      // Allow up to 2 attempts per model to bypass momentary 503 load spikes
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": geminiKey,
             },
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: trimmedMsg }],
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
               },
-            ],
-            generationConfig: {
-              temperature: 0.6,
-              maxOutputTokens: 350,
-            },
-          }),
-        });
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: trimmedMsg }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.6,
+                maxOutputTokens: 350,
+              },
+            }),
+          });
 
-        const data = await response.json();
+          const data = await response.json();
 
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          aiReply = data.candidates[0].content.parts[0].text;
-          console.log(`✅ Gemini generated response successfully using model: ${modelName}`);
+          if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+            aiReply = data.candidates[0].content.parts[0].text;
+            console.log(`✅ Gemini generated response via: ${modelName} (attempt ${attempt})`);
+            break;
+          } else {
+            lastError = data.error?.message || `HTTP ${response.status}`;
+            if (response.status === 503 && attempt === 1) {
+              console.warn(`⏳ Model ${modelName} capacity spike (503). Retrying in 1s...`);
+              await new Promise((r) => setTimeout(r, 1000));
+              continue;
+            }
+            console.warn(`⚠️ Model ${modelName} returned: ${lastError}`);
+            break;
+          }
+        } catch (err) {
+          lastError = err.message;
           break;
-        } else {
-          lastError = data.error?.message || `HTTP ${response.status}`;
-          console.warn(`⚠️ Model ${modelName} returned: ${lastError}, attempting next model in pool...`);
         }
-      } catch (err) {
-        lastError = err.message;
-        console.warn(`⚠️ Model ${modelName} fetch failed: ${err.message}, attempting next model in pool...`);
       }
+
+      if (aiReply) break;
     }
 
     if (!aiReply) {
