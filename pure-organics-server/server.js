@@ -10,11 +10,6 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-// Initialize Groq AI Client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "",
-});
-
 // Root Health-Check Route
 app.get("/", (req, res) => {
   res.send("🌿 Pure Organics API server is live and running!");
@@ -646,7 +641,7 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. AI STOREFRONT CHATBOT ROUTE (Order Tracking & Herbal Sommelier)
+// 9. AI STOREFRONT CHATBOT ROUTE (Dynamic Q&A + Live Tracking)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
@@ -659,115 +654,117 @@ app.post("/api/ai/assistant", async (req, res) => {
 
     const trimmedMsg = message.trim();
 
-    // -----------------------------------------------------------------
-    // 1. ORDER TRACKING LOOKUP (e.g., PO-123456 or 6-digit numbers)
-    // -----------------------------------------------------------------
+    // 1. Live Order Tracking Lookup (PO-XXXXXX or 6-digit number)
     const trackingMatch = trimmedMsg.match(/PO-?\d{5,7}/i) || trimmedMsg.match(/\b\d{6}\b/);
-
     if (trackingMatch) {
       let searchId = trackingMatch[0].toUpperCase();
-      if (!searchId.startsWith("PO-")) {
-        searchId = `PO-${searchId}`;
-      }
+      if (!searchId.startsWith("PO-")) searchId = `PO-${searchId}`;
 
-      // Query database directly for this order
-      const [orderRows] = await db.promise().query(
+      return db.query(
         "SELECT tracking_id, customer_name, total_amount, status, dispatch_note FROM orders WHERE UPPER(tracking_id) = ?",
-        [searchId]
+        [searchId],
+        (err, results) => {
+          if (err || !results || results.length === 0) {
+            return res.json({
+              success: true,
+              reply: `I searched our records, but could not locate tracking ID **${searchId}**. Please verify your ID from your SMS or WhatsApp confirmation!`,
+              recommendedProductIds: [],
+            });
+          }
+
+          const order = results[0];
+          const reply = `📦 **Order Status: ${order.tracking_id}**\n\n` +
+            `• **Customer:** ${order.customer_name}\n` +
+            `• **Live Status:** **${order.status}**\n` +
+            `• **Total:** ₹${Math.round(Number(order.total_amount))}\n` +
+            `• **Dispatch Note:** ${order.dispatch_note || "Harvest consignment verified and in transit."}\n\n` +
+            `Track live: https://pure-organics1.vercel.app/#/track?id=${order.tracking_id}`;
+
+          return res.json({
+            success: true,
+            reply,
+            recommendedProductIds: [],
+          });
+        }
       );
-
-      if (orderRows && orderRows.length > 0) {
-        const order = orderRows[0];
-        const statusReply = `📦 **Order Status for ${order.tracking_id}**\n\n` +
-          `• **Customer:** ${order.customer_name}\n` +
-          `• **Current Status:** **${order.status}**\n` +
-          `• **Amount:** ₹${Math.round(Number(order.total_amount))}\n` +
-          `• **Dispatch Note:** ${order.dispatch_note || "Farm harvest consignment verified and in transit."}\n\n` +
-          `Track live updates at: https://pure-organics1.vercel.app/#/track?id=${order.tracking_id}`;
-
-        return res.json({
-          success: true,
-          reply: statusReply,
-          recommendedProductIds: [],
-        });
-      } else {
-        return res.json({
-          success: true,
-          reply: `I searched our dispatch records, but could not locate tracking ID **${searchId}**. Please verify your 6-digit tracking code from SMS/WhatsApp or contact farm care!`,
-          recommendedProductIds: [],
-        });
-      }
     }
 
-    // -----------------------------------------------------------------
-    // 2. HERBAL SOMMELIER (Groq Llama 3.3)
-    // -----------------------------------------------------------------
-    if (!process.env.GROQ_API_KEY) {
+    // 2. Inquiries regarding order status/delays without a tracking ID
+    const lower = trimmedMsg.toLowerCase();
+    if (
+      lower.includes("where is my order") ||
+      lower.includes("order delay") ||
+      lower.includes("delivery status") ||
+      lower.includes("order status") ||
+      lower.includes("track my order") ||
+      lower.includes("order details") ||
+      lower.includes("delievery status")
+    ) {
       return res.json({
         success: true,
-        reply: "Welcome to Pure Organics! For diabetic wellness, unpolished **Karuppu Kavuni** (Black Rice) and **Mapillai Samba** are ideal choices due to their low glycemic index and dietary fiber.",
+        reply: "To check your order progress or delay details, please provide your **Tracking ID** (e.g., **PO-123456**). I will fetch the live dispatch status directly from our farm database!",
         recommendedProductIds: [],
       });
     }
 
-    const catalogFormatted = (catalog || [])
-      .map(
-        (p) =>
-          `ID: ${p.id} | Name: ${p.name} | Price: ₹${p.price} | Category: ${p.category} | In Stock: ${p.inStock}`
-      )
-      .join("\n");
-
-    const systemPrompt = `You are 'Nila', the AI Herbal Sommelier for 'Pure Organics', a direct-from-farm organic brand in Tamil Nadu.
-Specialties: Traditional wood-pressed oils (sesame, coconut, groundnut) and unpolished heirloom grains (Karuppu Kavuni, Mapillai Samba, Thooyamalli, millets).
-
-Live Store Catalog:
-${catalogFormatted || "Catalog details synchronizing from store database."}
-
-Rules:
-1. When asked about diabetic-friendly options, explain the low-GI benefits of traditional unpolished rice (like Karuppu Kavuni or Mapillai Samba).
-2. When asked about oils, emphasize the traditional vaagai wood chekku process without heat or preservatives.
-3. Understand queries in English, Tamil, and Tanglish.
-4. Keep the explanation warm, natural, and concise (2 to 3 sentences).
-5. If the user asks about an order without mentioning a tracking ID, ask them to provide their tracking ID starting with 'PO-'.
-6. Return output in valid JSON matching this schema:
-{
-  "reply": "Your explanation here",
-  "recommendedProductIds": [numeric ids of matching catalog products]
-}`;
-
-    const conversation = [
-      { role: "system", content: systemPrompt },
-      ...(Array.isArray(history) ? history.slice(-4) : []),
-      { role: "user", content: trimmedMsg },
-    ];
-
-    const chatCompletion = await groq.chat.completions.create({
-      messages: conversation,
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-    });
-
-    let parsed = {};
-    try {
-      parsed = JSON.parse(chatCompletion.choices[0]?.message?.content || "{}");
-    } catch {
-      parsed = {
-        reply: chatCompletion.choices[0]?.message?.content || "How else can I assist your pantry selections?",
+    // 3. Clean and verify Groq API Key
+    const apiKey = (process.env.GROQ_API_KEY || "").trim().replace(/^["']|["']$/g, "");
+    if (!apiKey) {
+      console.error("❌ CRITICAL: GROQ_API_KEY is missing from environment variables!");
+      return res.json({
+        success: true,
+        reply: "Welcome to Pure Organics! For daily wellness, unpolished Karuppu Kavuni (black rice) and cold-pressed sesame oil are highly recommended. (Please set GROQ_API_KEY on the server for dynamic queries).",
         recommendedProductIds: [],
-      };
+      });
     }
 
-    res.json({
+    const groqClient = new Groq({ apiKey });
+
+    // 4. Build Catalog Context
+    const catalogSummary = (catalog || [])
+      .map((p) => `• ID: ${p.id} | ${p.name} (₹${p.price}) | Category: ${p.category} | Stock: ${p.inStock ? "Yes" : "No"}`)
+      .join("\n");
+
+    const systemPrompt = `You are 'Nila', the AI Herbal Sommelier & Nutrition Advisor for 'Pure Organics', a native farm collective in Tamil Nadu.
+Specialties: Traditional cold-pressed chekku oils (vaagai wood sesame, coconut, groundnut) and unpolished heirloom grains (Karuppu Kavuni black rice, Mapillai Samba, Thooyamalli, millets).
+
+Store Catalog:
+${catalogSummary || "Traditional wood-pressed oils, native heirloom grains, and natural sweeteners."}
+
+Instructions:
+1. Answer the customer's specific question directly, warmly, and authentically (2 to 4 sentences).
+2. If they ask about diets, weight loss, or black rice: recommend Karuppu Kavuni (rich in anthocyanins, low glycemic index, high fiber) or millets.
+3. If they ask about cooking oils: explain that cold-pressed wood chekku oils retain vital nutrients, antioxidants, and aroma without heating or chemical refining.
+4. Understand English, Tamil, and Tanglish queries naturally.
+5. If recommending products, mention their names from the catalog.`;
+
+    const chatCompletion = await groqClient.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: trimmedMsg },
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.6,
+      max_tokens: 350,
+    });
+
+    const aiReply = chatCompletion.choices[0]?.message?.content || "How else may I help guide your native harvest selections?";
+
+    // Match recommended products from catalog
+    const matchedIds = (catalog || [])
+      .filter((p) => p.name && aiReply.toLowerCase().includes(p.name.toLowerCase()))
+      .map((p) => p.id);
+
+    return res.json({
       success: true,
-      reply: parsed.reply || "Let me know what native harvest you are looking for!",
-      recommendedProductIds: parsed.recommendedProductIds || [],
+      reply: aiReply,
+      recommendedProductIds: matchedIds,
     });
   } catch (error) {
-    console.error("Assistant Route Error:", error);
-    res.json({
+    console.error("GROQ API EXECUTION ERROR:", error.message || error);
+    return res.json({
       success: true,
-      reply: "For everyday wellness, our vaagai wood-pressed oils and heirloom grains are top favorites! How can I guide you further?",
+      reply: "For healthy choices, our unpolished Karuppu Kavuni rice and wood-pressed oils are top favorites! How can I guide you further?",
       recommendedProductIds: [],
     });
   }
