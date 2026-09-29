@@ -4,11 +4,15 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
-const Groq = require("groq-sdk");
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+// Initialize Google Gemini Client with clean key
+const geminiApiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
+const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 // Root Health-Check Route
 app.get("/", (req, res) => {
@@ -581,8 +585,6 @@ app.post("/api/payment/create-order", async (req, res) => {
     const amountInPaise = Math.round(numericAmount * 100);
     const receiptId = `po_rcpt_${Date.now()}`;
 
-    console.log(`Initiating Razorpay order: ₹${numericAmount} (${amountInPaise} paise) with Key ID: ${keyId}`);
-
     const options = {
       amount: amountInPaise,
       currency: "INR",
@@ -590,8 +592,6 @@ app.post("/api/payment/create-order", async (req, res) => {
     };
 
     const order = await razorpayInstance.orders.create(options);
-
-    console.log(`✅ Razorpay order created successfully: ${order.id}`);
 
     res.json({
       orderId: order.id,
@@ -641,12 +641,12 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. AI STOREFRONT CHATBOT ROUTE (Dynamic Q&A + Live Tracking)
+// 9. REAL-TIME AI ASSISTANT (Powered by Gemini 2.5 Flash)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
   try {
-    const { message, catalog, history } = req.body;
+    const { message, catalog } = req.body;
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Message is required" });
@@ -654,7 +654,7 @@ app.post("/api/ai/assistant", async (req, res) => {
 
     const trimmedMsg = message.trim();
 
-    // 1. Live Order Tracking Lookup (PO-XXXXXX or 6-digit number)
+    // 1. Live Order Tracking Lookup (e.g., PO-123456 or 6 digits)
     const trackingMatch = trimmedMsg.match(/PO-?\d{5,7}/i) || trimmedMsg.match(/\b\d{6}\b/);
     if (trackingMatch) {
       let searchId = trackingMatch[0].toUpperCase();
@@ -667,7 +667,7 @@ app.post("/api/ai/assistant", async (req, res) => {
           if (err || !results || results.length === 0) {
             return res.json({
               success: true,
-              reply: `I searched our records, but could not locate tracking ID **${searchId}**. Please verify your ID from your SMS or WhatsApp confirmation!`,
+              reply: `I searched our records, but could not locate tracking ID **${searchId}**. Please check your tracking number from SMS/WhatsApp or contact our farm desk!`,
               recommendedProductIds: [],
             });
           }
@@ -689,11 +689,12 @@ app.post("/api/ai/assistant", async (req, res) => {
       );
     }
 
-    // 2. Inquiries regarding order status/delays without a tracking ID
+    // 2. Order inquiries missing Tracking ID
     const lower = trimmedMsg.toLowerCase();
     if (
       lower.includes("where is my order") ||
       lower.includes("order delay") ||
+      lower.includes("why is my order delaying") ||
       lower.includes("delivery status") ||
       lower.includes("order status") ||
       lower.includes("track my order") ||
@@ -702,53 +703,41 @@ app.post("/api/ai/assistant", async (req, res) => {
     ) {
       return res.json({
         success: true,
-        reply: "To check your order progress or delay details, please provide your **Tracking ID** (e.g., **PO-123456**). I will fetch the live dispatch status directly from our farm database!",
+        reply: "To check the dispatch progress or reason for any transit delay, please share your **Tracking ID** (e.g., **PO-123456**). I will fetch the live update directly from our warehouse!",
         recommendedProductIds: [],
       });
     }
 
-    // 3. Clean and verify Groq API Key
-    const apiKey = (process.env.GROQ_API_KEY || "").trim().replace(/^["']|["']$/g, "");
-    if (!apiKey) {
-      console.error("❌ CRITICAL: GROQ_API_KEY is missing from environment variables!");
-      return res.json({
-        success: true,
-        reply: "Welcome to Pure Organics! For daily wellness, unpolished Karuppu Kavuni (black rice) and cold-pressed sesame oil are highly recommended. (Please set GROQ_API_KEY on the server for dynamic queries).",
-        recommendedProductIds: [],
-      });
-    }
-
-    const groqClient = new Groq({ apiKey });
-
-    // 4. Build Catalog Context
+    // 3. Prepare Catalog Summary for Gemini
     const catalogSummary = (catalog || [])
       .map((p) => `• ID: ${p.id} | ${p.name} (₹${p.price}) | Category: ${p.category} | Stock: ${p.inStock ? "Yes" : "No"}`)
       .join("\n");
 
-    const systemPrompt = `You are 'Nila', the AI Herbal Sommelier & Nutrition Advisor for 'Pure Organics', a native farm collective in Tamil Nadu.
+    const systemInstruction = `You are 'Nila', the AI Herbal Sommelier & Nutrition Concierge for 'Pure Organics', a direct-from-farm collective in Tamil Nadu.
 Specialties: Traditional cold-pressed chekku oils (vaagai wood sesame, coconut, groundnut) and unpolished heirloom grains (Karuppu Kavuni black rice, Mapillai Samba, Thooyamalli, millets).
 
-Store Catalog:
+Live Store Catalog:
 ${catalogSummary || "Traditional wood-pressed oils, native heirloom grains, and natural sweeteners."}
 
-Instructions:
-1. Answer the customer's specific question directly, warmly, and authentically (2 to 4 sentences).
-2. If they ask about diets, weight loss, or black rice: recommend Karuppu Kavuni (rich in anthocyanins, low glycemic index, high fiber) or millets.
-3. If they ask about cooking oils: explain that cold-pressed wood chekku oils retain vital nutrients, antioxidants, and aroma without heating or chemical refining.
-4. Understand English, Tamil, and Tanglish queries naturally.
-5. If recommending products, mention their names from the catalog.`;
+Behavior & Guidelines:
+1. ALWAYS answer the customer's exact intent directly:
+   - If they ask about diets/weight loss: explain how Karuppu Kavuni (black rice) or millets have a low glycemic index, high anthocyanin antioxidants, and rich fiber that keep insulin levels stable.
+   - If they ask about cooking oils: explain why vaagai wood-pressed oils retain essential fatty acids without chemical bleaching or high-heat refinement.
+   - If they ask about hair or skin: recommend cold-pressed coconut or sesame oil.
+2. Tone: Warm, helpful, grounded, and concise (2 to 4 sentences).
+3. Languages: Understand and reply naturally in English, Tamil, or Tanglish.
+4. When recommending products from the catalog, mention their exact names so the customer can find them.`;
 
-    const chatCompletion = await groqClient.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: trimmedMsg },
-      ],
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.6,
-      max_tokens: 350,
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: trimmedMsg,
+      config: {
+        systemInstruction,
+        temperature: 0.6,
+      },
     });
 
-    const aiReply = chatCompletion.choices[0]?.message?.content || "How else may I help guide your native harvest selections?";
+    const aiReply = response.text || "How else may I help guide your native harvest selections?";
 
     // Match recommended products from catalog
     const matchedIds = (catalog || [])
@@ -761,10 +750,10 @@ Instructions:
       recommendedProductIds: matchedIds,
     });
   } catch (error) {
-    console.error("GROQ API EXECUTION ERROR:", error.message || error);
+    console.error("GEMINI API ERROR:", error);
     return res.json({
       success: true,
-      reply: "For healthy choices, our unpolished Karuppu Kavuni rice and wood-pressed oils are top favorites! How can I guide you further?",
+      reply: "For daily wellness, our vaagai wood-pressed oils and unpolished Karuppu Kavuni rice are customer favorites! How can I guide you further?",
       recommendedProductIds: [],
     });
   }
