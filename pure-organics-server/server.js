@@ -636,7 +636,7 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Native Google Direct Endpoint)
+// 9. REAL-TIME AI ASSISTANT (Powered by Google Gemini 3.8 Flash)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
@@ -717,14 +717,14 @@ ${catalogSummary || "Traditional wood-pressed oils, native heirloom grains, and 
 Guidelines:
 1. Always answer the customer's specific question directly, warmly, and concisely (2 to 4 sentences).
 2. If asked about diets, weight loss, or black rice: explain why unpolished Karuppu Kavuni or millets are ideal (low glycemic index, rich in anthocyanin antioxidants and fiber that help insulin control and keep you full).
-3. If asked about cooking oils: explain that cold-pressed wood chekku oils retain vital nutrients, antioxidants, and aroma without heating or chemical refining.
+3. If asked about cooking oils: explain that cold-pressed wood chekku oils retain vital nutrients, antioxidants, and natural aroma without heating or chemical refining.
 4. If asked about skin or hair: recommend cold-pressed coconut or sesame oil.
 5. Understand English, Tamil, and Tanglish queries naturally.`;
 
     const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 4. Direct REST call to Google's Native Endpoint
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+    // 4. Direct REST call to Google's Native Endpoint using gemini-3.8-flash
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent`;
 
     const response = await fetch(geminiEndpoint, {
       method: "POST",
