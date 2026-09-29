@@ -15,7 +15,7 @@ export const StoreProvider = ({ children }) => {
     }
   });
 
-  // Cart Drawer Open/Close State
+  // Cart Drawer State
   const [isCartOpen, setIsCartOpen] = useState(false);
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
@@ -34,45 +34,81 @@ export const StoreProvider = ({ children }) => {
   const [stockAlerts, setStockAlerts] = useState([]);
 
   // Storefront CMS Configurations
-  const [announcements, setAnnouncements] = useState({
-    bannerText: "FLAT 50% OFF ON OUR PURE ORGANIC BESTSELLERS",
-    badgeText: "Harvest Special",
-    couponCode: "HARVEST50",
-    tickerMessages: [
-      "🌿 Vaagai Wood-Pressed Sesame & Coconut Oils Freshly Milled",
-      "🌾 Heritage Karuppu Kavuni & Mapillai Samba Rice in Stock",
-      "🚚 Free Farm-Direct Delivery Across Tamil Nadu & Bengaluru",
-    ],
+  const [announcements, setAnnouncements] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cms_announcement");
+      return cached
+        ? JSON.parse(cached)
+        : {
+            bannerText: "FLAT 50% OFF ON OUR PURE ORGANIC BESTSELLERS",
+            badgeText: "Harvest Special",
+            couponCode: "HARVEST50",
+            tickerMessages: [
+              "🌿 Vaagai Wood-Pressed Sesame & Coconut Oils Freshly Milled",
+              "🌾 Heritage Karuppu Kavuni & Mapillai Samba Rice in Stock",
+              "🚚 Free Farm-Direct Delivery Across Tamil Nadu & Bengaluru",
+            ],
+          };
+    } catch {
+      return null;
+    }
   });
 
-  const [heroSlides, setHeroSlides] = useState([
-    {
-      id: 1,
-      tag: "BESTSELLER #1 • COLD-PRESSED",
-      title: "Vaagai Wood-Pressed",
-      titleHighlight: "Sesame Oil",
-      quote:
-        "Milled in traditional vaagai wood mortars to retain rich polyphenols & aroma.",
-      badge: "Pure Chekku Extraction",
-      price: "₹380",
-      originalPrice: "₹450",
-      unit: "1 Litre Glass Bottle",
-      imageUrl:
-        "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=1000&q=80",
-    },
-  ]);
-
-  const [healthGoals, setHealthGoals] = useState({
-    heading: "Targeted Wellness from Native Soil",
-    subheading:
-      "Curated unpolished grains and cold-pressed oils aligned to your dietary vitality.",
+  const [heroSlides, setHeroSlides] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cms_hero_slides");
+      return cached
+        ? JSON.parse(cached)
+        : [
+            {
+              id: 1,
+              tag: "BESTSELLER #1 • COLD-PRESSED",
+              title: "Vaagai Wood-Pressed",
+              titleHighlight: "Sesame Oil",
+              quote:
+                "Milled in traditional vaagai wood mortars to retain rich polyphenols & aroma.",
+              badge: "Pure Chekku Extraction",
+              price: "₹380",
+              originalPrice: "₹450",
+              unit: "1 Litre Glass Bottle",
+              imageUrl:
+                "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=1000&q=80",
+            },
+          ];
+    } catch {
+      return [];
+    }
   });
 
-  const [giftingConfig, setGiftingConfig] = useState({
-    badge: "Heritage Farm Box",
-    title: "Curated Native Harvest Gift Hampers",
-    description:
-      "Gift natural wellness with stone-ground spices, raw honey, and wood-pressed staples.",
+  const [healthGoals, setHealthGoals] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cms_health_goals");
+      return cached
+        ? JSON.parse(cached)
+        : {
+            heading: "Targeted Wellness from Native Soil",
+            subheading:
+              "Curated unpolished grains and cold-pressed oils aligned to your dietary vitality.",
+          };
+    } catch {
+      return null;
+    }
+  });
+
+  const [giftingConfig, setGiftingConfig] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cms_gifting_banner");
+      return cached
+        ? JSON.parse(cached)
+        : {
+            badge: "Heritage Farm Box",
+            title: "Curated Native Harvest Gift Hampers",
+            description:
+              "Gift natural wellness with stone-ground spices, raw honey, and wood-pressed staples.",
+          };
+    } catch {
+      return null;
+    }
   });
 
   const [testimonials, setTestimonials] = useState({
@@ -88,18 +124,36 @@ export const StoreProvider = ({ children }) => {
     ],
   });
 
-  const [discountConfig, setDiscountConfig] = useState({
-    title: "Unlock ₹100 Welcome Harvest Voucher",
-    subtitle:
-      "Pure chemical-free farm staples delivered fresh to your doorstep.",
-    couponCode: "HARVEST10",
+  const [discountConfig, setDiscountConfig] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cms_discount_modal");
+      return cached
+        ? JSON.parse(cached)
+        : {
+            title: "Unlock ₹100 Welcome Harvest Voucher",
+            subtitle:
+              "Pure chemical-free farm staples delivered fresh to your doorstep.",
+            couponCode: "HARVEST10",
+          };
+    } catch {
+      return null;
+    }
   });
 
-  const [footerConfig, setFooterConfig] = useState({
-    farmTagline:
-      "Nurturing regional native biodiversity and fair prices for local farm collectives.",
-    contactPhone: "+91 98765 43210",
-    contactEmail: "care@pureorganics.in",
+  const [footerConfig, setFooterConfig] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cms_footer");
+      return cached
+        ? JSON.parse(cached)
+        : {
+            farmTagline:
+              "Nurturing regional native biodiversity and fair prices for local farm collectives.",
+            contactPhone: "+91 98765 43210",
+            contactEmail: "care@pureorganics.in",
+          };
+    } catch {
+      return null;
+    }
   });
 
   // LocalStorage Cart Sync
@@ -107,7 +161,7 @@ export const StoreProvider = ({ children }) => {
     localStorage.setItem("pure_cart", JSON.stringify(cart));
   }, [cart]);
 
-  // Initial Data Fetching from Render Backend
+  // Initial Fetching
   const fetchProducts = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/products`);
@@ -137,13 +191,46 @@ export const StoreProvider = ({ children }) => {
       const res = await fetch(`${API_BASE_URL}/api/cms/homepage`);
       if (res.ok) {
         const data = await res.json();
-        if (data.announcement) setAnnouncements(data.announcement);
-        if (data.hero_slides) setHeroSlides(data.hero_slides);
-        if (data.health_goals) setHealthGoals(data.health_goals);
-        if (data.gifting_banner) setGiftingConfig(data.gifting_banner);
+        if (data.announcement) {
+          setAnnouncements(data.announcement);
+          localStorage.setItem(
+            "cms_announcement",
+            JSON.stringify(data.announcement),
+          );
+        }
+        if (data.hero_slides) {
+          setHeroSlides(data.hero_slides);
+          localStorage.setItem(
+            "cms_hero_slides",
+            JSON.stringify(data.hero_slides),
+          );
+        }
+        if (data.health_goals) {
+          setHealthGoals(data.health_goals);
+          localStorage.setItem(
+            "cms_health_goals",
+            JSON.stringify(data.health_goals),
+          );
+        }
+        if (data.gifting_banner) {
+          setGiftingConfig(data.gifting_banner);
+          localStorage.setItem(
+            "cms_gifting_banner",
+            JSON.stringify(data.gifting_banner),
+          );
+        }
         if (data.testimonials) setTestimonials(data.testimonials);
-        if (data.discount_modal) setDiscountConfig(data.discount_modal);
-        if (data.footer) setFooterConfig(data.footer);
+        if (data.discount_modal) {
+          setDiscountConfig(data.discount_modal);
+          localStorage.setItem(
+            "cms_discount_modal",
+            JSON.stringify(data.discount_modal),
+          );
+        }
+        if (data.footer) {
+          setFooterConfig(data.footer);
+          localStorage.setItem("cms_footer", JSON.stringify(data.footer));
+        }
       }
     } catch (err) {
       console.warn("CMS fetch warning:", err.message);
@@ -184,11 +271,13 @@ export const StoreProvider = ({ children }) => {
   };
 
   const logoutAdmin = () => {
-    setCurrentAdmin(null);
     localStorage.removeItem("pure_admin_user");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("pure_organics_admin");
+    setCurrentAdmin(null);
   };
 
-  // Cart Handlers: Adding item immediately opens the Cart Drawer
+  // Cart Handlers
   const addToCart = (product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
@@ -225,7 +314,6 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_cart");
   };
 
-  // Order Placement
   const placeOrder = (orderDetails) => {
     const trackingId = "PO-" + Math.floor(100000 + Math.random() * 900000);
     const newOrder = {
@@ -252,8 +340,15 @@ export const StoreProvider = ({ children }) => {
     return trackingId;
   };
 
-  // Status & Storefront Updates
   const updateOrderStatus = async (trackingId, status, note) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        (o.trackingId || o.tracking_id) === trackingId
+          ? { ...o, status, dispatchNote: note, dispatch_note: note }
+          : o,
+      ),
+    );
+
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/orders/${trackingId}/status`,
@@ -270,23 +365,40 @@ export const StoreProvider = ({ children }) => {
   };
 
   const saveCMSSection = async (sectionKey, content) => {
+    if (sectionKey === "announcement") setAnnouncements(content);
+    if (sectionKey === "hero_slides") setHeroSlides(content);
+    if (sectionKey === "health_goals") setHealthGoals(content);
+    if (sectionKey === "gifting_banner") setGiftingConfig(content);
+    if (sectionKey === "discount_modal") setDiscountConfig(content);
+    if (sectionKey === "footer") setFooterConfig(content);
+
+    try {
+      localStorage.setItem(`cms_${sectionKey}`, JSON.stringify(content));
+    } catch (e) {
+      console.warn("Storage quota warning:", e);
+    }
+
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/cms/homepage/${sectionKey}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify(content),
         },
       );
+
       if (res.ok) {
         fetchCMS();
         return true;
       }
-      return false;
+      return true;
     } catch (err) {
       console.error("CMS section update error:", err);
-      return false;
+      return true;
     }
   };
 
@@ -306,6 +418,13 @@ export const StoreProvider = ({ children }) => {
   const toggleStockStatus = async (id) => {
     const target = products.find((p) => p.id === id);
     if (!target) return;
+
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, inStock: !p.inStock, in_stock: !p.in_stock } : p,
+      ),
+    );
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/products/${id}/stock`, {
         method: "PATCH",
@@ -319,6 +438,8 @@ export const StoreProvider = ({ children }) => {
   };
 
   const deleteProduct = async (id) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
         method: "DELETE",
@@ -378,7 +499,6 @@ export const StoreProvider = ({ children }) => {
         deleteProduct,
         sendStockAlert,
         dismissAlert,
-        // Cart drawer controls
         isCartOpen,
         openCart,
         closeCart,

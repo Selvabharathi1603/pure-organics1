@@ -6,11 +6,12 @@ import Footer from "../components/Footer";
 import CartDrawer from "../components/CartDrawer";
 import DiscountModal from "../components/DiscountModal";
 
+// Import your newly created component:
+import StorefrontChatbot from "./StorefrontChatbor";
 export default function ClientLayout() {
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
 
   useEffect(() => {
-    // Show discount popup gracefully after 2.5s instead of instant flash
     const timer = setTimeout(() => {
       const alreadyClosed = sessionStorage.getItem(
         "organic_discount_dismissed",
@@ -35,11 +36,8 @@ export default function ClientLayout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#faf7f2] text-[#1b2e23] antialiased selection:bg-[#2d5a3f] selection:text-white">
-      {/* Announcement Bar */}
+    <div className="flex flex-col min-h-screen bg-[#faf7f2] text-[#1b2e23] antialiased selection:bg-[#2d5a3f] selection:text-white relative">
       <AnnouncementBar />
-
-      {/* Floating Botanical Navbar */}
       <Navbar />
       <CartDrawer />
 
@@ -49,12 +47,14 @@ export default function ClientLayout() {
 
       <Footer />
 
-      {/* Discount Form Modal */}
       <DiscountModal
         isOpen={isDiscountOpen}
         onClose={handleCloseDiscount}
         onSubmit={handleSubmitDiscount}
       />
+
+      {/* Floating Chatbot Widget */}
+      <StorefrontChatbot />
     </div>
   );
 }
