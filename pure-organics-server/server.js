@@ -636,20 +636,8 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Native Google Direct REST Endpoint)
+// 9. REAL-TIME AI ASSISTANT (Powered by Google Gemini 3.5 Flash Lite)
 // ==========================================
-
-// Helper endpoint to check all models supported on this exact key
-app.get("/api/ai/models", async (req, res) => {
-  try {
-    const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
-    const data = await response.json();
-    return res.json(data);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-});
 
 app.post("/api/ai/assistant", async (req, res) => {
   try {
@@ -735,74 +723,43 @@ Guidelines:
 
     const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 4. Endpoints pool: Tries the stable v1 API first (which avoids v1beta 503 high-demand blocks), then v1beta models
-    const endpointsToTry = [
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`
-    ];
+    // 4. Call Google Gemini 3.5 Flash Lite directly
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${geminiKey}`;
 
-    let aiReply = null;
-    let lastError = null;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: trimmedMsg }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 350,
+        },
+      }),
+    });
 
-    for (const url of endpointsToTry) {
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              system_instruction: {
-                parts: [{ text: systemPrompt }],
-              },
-              contents: [
-                {
-                  role: "user",
-                  parts: [{ text: trimmedMsg }],
-                },
-              ],
-              generationConfig: {
-                temperature: 0.6,
-                maxOutputTokens: 350,
-              },
-            }),
-          });
+    const data = await response.json();
 
-          const data = await response.json();
-
-          if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            aiReply = data.candidates[0].content.parts[0].text;
-            console.log(`✅ Gemini answered successfully via endpoint: ${url.split("?")[0]}`);
-            break;
-          } else {
-            lastError = data.error?.message || `HTTP ${response.status}`;
-            if (response.status === 503 && attempt === 1) {
-              console.warn(`⏳ Endpoint returned 503 capacity spike. Retrying in 1s...`);
-              await new Promise((r) => setTimeout(r, 1000));
-              continue;
-            }
-            console.warn(`⚠️ Endpoint returned: ${lastError}`);
-            break;
-          }
-        } catch (err) {
-          lastError = err.message;
-          break;
-        }
-      }
-
-      if (aiReply) break;
-    }
-
-    if (!aiReply) {
+    if (!response.ok || !data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error("Gemini Direct Error:", data);
       return res.json({
         success: true,
-        reply: `API Notice: ${lastError}`,
+        reply: `API Notice: ${data.error?.message || "Google API returned an empty response."}`,
         recommendedProductIds: [],
       });
     }
+
+    const aiReply = data.candidates[0].content.parts[0].text;
 
     // Match recommended products from catalog
     const matchedIds = (catalog || [])
