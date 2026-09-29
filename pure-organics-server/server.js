@@ -636,7 +636,7 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Powered by Google Gemini 3.8 Flash)
+// 9. REAL-TIME AI ASSISTANT (Stable Auto-Fallback Gemini Endpoint)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
@@ -723,44 +723,65 @@ Guidelines:
 
     const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 4. Direct REST call to Google's Native Endpoint using gemini-3.8-flash
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent`;
+    // 4. Stable Multi-Model Waterfall: Tries stable production 1.5 flash, then variants
+    const modelsToTry = [
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-pro"
+    ];
 
-    const response = await fetch(geminiEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": geminiKey,
-      },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: trimmedMsg }],
+    let aiReply = null;
+    let lastError = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
           },
-        ],
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 350,
-        },
-      }),
-    });
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: trimmedMsg }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.6,
+              maxOutputTokens: 350,
+            },
+          }),
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (!response.ok) {
-      console.error("Gemini Direct Error:", data);
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          aiReply = data.candidates[0].content.parts[0].text;
+          console.log(`✅ Gemini generated response successfully using model: ${modelName}`);
+          break;
+        } else {
+          lastError = data.error?.message || `HTTP ${response.status}`;
+          console.warn(`⚠️ Model ${modelName} returned: ${lastError}, attempting next model in pool...`);
+        }
+      } catch (err) {
+        lastError = err.message;
+        console.warn(`⚠️ Model ${modelName} fetch failed: ${err.message}, attempting next model in pool...`);
+      }
+    }
+
+    if (!aiReply) {
       return res.json({
         success: true,
-        reply: `API Notice: ${data.error?.message || "Authentication error with Google API."}`,
+        reply: `API Notice: ${lastError}`,
         recommendedProductIds: [],
       });
     }
-
-    const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "How else may I help guide your native harvest selections?";
 
     // Match recommended products from catalog
     const matchedIds = (catalog || [])
