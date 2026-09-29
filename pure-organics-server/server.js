@@ -636,8 +636,20 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Active v1beta Model Pool with 503 Auto-Retry)
+// 9. REAL-TIME AI ASSISTANT (Native Google Direct REST Endpoint)
 // ==========================================
+
+// Helper endpoint to check all models supported on this exact key
+app.get("/api/ai/models", async (req, res) => {
+  try {
+    const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+    const data = await response.json();
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 app.post("/api/ai/assistant", async (req, res) => {
   try {
@@ -723,26 +735,24 @@ Guidelines:
 
     const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 4. Active supported models for this project's v1beta tier
-    const supportedModels = [
-      "gemini-3.8-flash",
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite"
+    // 4. Endpoints pool: Tries the stable v1 API first (which avoids v1beta 503 high-demand blocks), then v1beta models
+    const endpointsToTry = [
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`
     ];
 
     let aiReply = null;
     let lastError = null;
 
-    for (const modelName of supportedModels) {
-      // Allow up to 2 attempts per model to bypass momentary 503 load spikes
+    for (const url of endpointsToTry) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
-          const response = await fetch(endpoint, {
+          const response = await fetch(url, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "x-goog-api-key": geminiKey,
             },
             body: JSON.stringify({
               system_instruction: {
@@ -765,16 +775,16 @@ Guidelines:
 
           if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
             aiReply = data.candidates[0].content.parts[0].text;
-            console.log(`✅ Gemini generated response via: ${modelName} (attempt ${attempt})`);
+            console.log(`✅ Gemini answered successfully via endpoint: ${url.split("?")[0]}`);
             break;
           } else {
             lastError = data.error?.message || `HTTP ${response.status}`;
             if (response.status === 503 && attempt === 1) {
-              console.warn(`⏳ Model ${modelName} capacity spike (503). Retrying in 1s...`);
+              console.warn(`⏳ Endpoint returned 503 capacity spike. Retrying in 1s...`);
               await new Promise((r) => setTimeout(r, 1000));
               continue;
             }
-            console.warn(`⚠️ Model ${modelName} returned: ${lastError}`);
+            console.warn(`⚠️ Endpoint returned: ${lastError}`);
             break;
           }
         } catch (err) {
