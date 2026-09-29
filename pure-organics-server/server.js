@@ -4,15 +4,10 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
-const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
-
-// Initialize Google Gemini Client with clean key
-const geminiApiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
-const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 // Root Health-Check Route
 app.get("/", (req, res) => {
@@ -641,7 +636,7 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Powered by Gemini 2.5 Flash)
+// 9. REAL-TIME AI ASSISTANT (Native Google Direct Endpoint)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
@@ -654,7 +649,7 @@ app.post("/api/ai/assistant", async (req, res) => {
 
     const trimmedMsg = message.trim();
 
-    // 1. Live Order Tracking Lookup (e.g., PO-123456 or 6 digits)
+    // 1. Order Tracking Lookup (e.g., PO-123456 or 6 digits)
     const trackingMatch = trimmedMsg.match(/PO-?\d{5,7}/i) || trimmedMsg.match(/\b\d{6}\b/);
     if (trackingMatch) {
       let searchId = trackingMatch[0].toUpperCase();
@@ -667,7 +662,7 @@ app.post("/api/ai/assistant", async (req, res) => {
           if (err || !results || results.length === 0) {
             return res.json({
               success: true,
-              reply: `I searched our records, but could not locate tracking ID **${searchId}**. Please check your tracking number from SMS/WhatsApp or contact our farm desk!`,
+              reply: `I searched our records, but could not locate tracking ID **${searchId}**. Please check your tracking number from your SMS/WhatsApp confirmation or reach out to our farm desk!`,
               recommendedProductIds: [],
             });
           }
@@ -689,7 +684,7 @@ app.post("/api/ai/assistant", async (req, res) => {
       );
     }
 
-    // 2. Order inquiries missing Tracking ID
+    // 2. Order inquiries missing a Tracking ID
     const lower = trimmedMsg.toLowerCase();
     if (
       lower.includes("where is my order") ||
@@ -708,36 +703,64 @@ app.post("/api/ai/assistant", async (req, res) => {
       });
     }
 
-    // 3. Prepare Catalog Summary for Gemini
+    // 3. Prepare Catalog Summary
     const catalogSummary = (catalog || [])
       .map((p) => `• ID: ${p.id} | ${p.name} (₹${p.price}) | Category: ${p.category} | Stock: ${p.inStock ? "Yes" : "No"}`)
       .join("\n");
 
-    const systemInstruction = `You are 'Nila', the AI Herbal Sommelier & Nutrition Concierge for 'Pure Organics', a direct-from-farm collective in Tamil Nadu.
+    const systemPrompt = `You are 'Nila', the AI Herbal Sommelier & Nutrition Concierge for 'Pure Organics', a direct-from-farm collective in Tamil Nadu.
 Specialties: Traditional cold-pressed chekku oils (vaagai wood sesame, coconut, groundnut) and unpolished heirloom grains (Karuppu Kavuni black rice, Mapillai Samba, Thooyamalli, millets).
 
 Live Store Catalog:
 ${catalogSummary || "Traditional wood-pressed oils, native heirloom grains, and natural sweeteners."}
 
-Behavior & Guidelines:
-1. ALWAYS answer the customer's exact intent directly:
-   - If they ask about diets/weight loss: explain how Karuppu Kavuni (black rice) or millets have a low glycemic index, high anthocyanin antioxidants, and rich fiber that keep insulin levels stable.
-   - If they ask about cooking oils: explain why vaagai wood-pressed oils retain essential fatty acids without chemical bleaching or high-heat refinement.
-   - If they ask about hair or skin: recommend cold-pressed coconut or sesame oil.
-2. Tone: Warm, helpful, grounded, and concise (2 to 4 sentences).
-3. Languages: Understand and reply naturally in English, Tamil, or Tanglish.
-4. When recommending products from the catalog, mention their exact names so the customer can find them.`;
+Guidelines:
+1. Always answer the customer's specific question directly, warmly, and concisely (2 to 4 sentences).
+2. If asked about diets, weight loss, or black rice: explain why unpolished Karuppu Kavuni or millets are ideal (low glycemic index, rich in anthocyanin antioxidants and fiber that help insulin control and keep you full).
+3. If asked about cooking oils: explain that cold-pressed wood chekku oils retain vital nutrients, antioxidants, and aroma without heating or chemical refining.
+4. If asked about skin or hair: recommend cold-pressed coconut or sesame oil.
+5. Understand English, Tamil, and Tanglish queries naturally.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: trimmedMsg,
-      config: {
-        systemInstruction,
-        temperature: 0.6,
+    const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
+
+    // 4. Direct REST call to Google's Native Endpoint
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+
+    const response = await fetch(geminiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiKey,
       },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: trimmedMsg }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 350,
+        },
+      }),
     });
 
-    const aiReply = response.text || "How else may I help guide your native harvest selections?";
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini Direct Error:", data);
+      return res.json({
+        success: true,
+        reply: `API Notice: ${data.error?.message || "Authentication error with Google API."}`,
+        recommendedProductIds: [],
+      });
+    }
+
+    const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "How else may I help guide your native harvest selections?";
 
     // Match recommended products from catalog
     const matchedIds = (catalog || [])
@@ -750,10 +773,10 @@ Behavior & Guidelines:
       recommendedProductIds: matchedIds,
     });
   } catch (error) {
-    console.error("GEMINI API ERROR:", error);
+    console.error("ASSISTANT ERROR:", error);
     return res.json({
       success: true,
-      reply: "For daily wellness, our vaagai wood-pressed oils and unpolished Karuppu Kavuni rice are customer favorites! How can I guide you further?",
+      reply: "Our farm AI sommelier is briefly reconnecting. Please ask again in a moment!",
       recommendedProductIds: [],
     });
   }
