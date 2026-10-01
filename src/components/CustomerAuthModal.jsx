@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Phone, Mail, Edit3 } from "lucide-react";
-import { API_BASE_URL } from "../config/api";
+import { X, Phone, Mail, Edit3, ArrowRight, Loader2 } from "lucide-react";
+import { API_BASE_URL as CONFIG_URL } from "../config/api";
+
+// Fallback to local server port 5000 if config URL is missing or empty
+const BASE_URL = CONFIG_URL || "http://localhost:5000";
 
 export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
-  const [step, setStep] = useState("PHONE"); // 'PHONE' -> 'OTP' -> 'PROFILE'
+  const [step, setStep] = useState("PHONE"); // 'PHONE' | 'OTP' | 'PROFILE'
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [bannerHint, setBannerHint] = useState("");
 
   const [profile, setProfile] = useState({
     firstName: "",
@@ -20,6 +22,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   const otpInputRefs = useRef([]);
 
+  // Countdown timer for Resend Code
   useEffect(() => {
     let interval = null;
     if (step === "OTP" && timer > 0) {
@@ -31,23 +34,36 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     return () => clearInterval(interval);
   }, [step, timer]);
 
+  // Reset modal state on close/open
+  useEffect(() => {
+    if (!isOpen) {
+      setStep("PHONE");
+      setOtp(["", "", "", "", "", ""]);
+      setErrorMsg("");
+      setLoading(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  // 1. Request OTP
+  // 1. Request OTP Action
   const handleRequestOtp = async (e) => {
-    e.preventDefault();
-    if (phone.trim().length !== 10) {
-      setErrorMsg("Please enter a valid 10-digit phone number");
+    if (e) e.preventDefault();
+    const cleanPhone = phone.trim().replace(/\D/g, "");
+
+    if (cleanPhone.length !== 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number");
       return;
     }
+
     setErrorMsg("");
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+      const res = await fetch(`${BASE_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
+        body: JSON.stringify({ phone: cleanPhone }),
       });
       const data = await res.json();
 
@@ -55,31 +71,29 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         setStep("OTP");
         setTimer(30);
         setCanResend(false);
-
-        // Demo Helper: Shows OTP in a discrete banner so testing never stalls
-        if (data.demoOtp) {
-          setBannerHint(`Demo Code: ${data.demoOtp}`);
-          // Pre-split for quick autofill
-          const digits = data.demoOtp.split("");
-          setOtp(digits);
-        }
+        setOtp(["", "", "", "", "", ""]);
       } else {
-        setErrorMsg(data.error || "Failed to dispatch OTP");
+        setErrorMsg(data.error || "Failed to dispatch verification code");
       }
     } catch (err) {
-      setErrorMsg("Network error. Check backend server.");
+      setErrorMsg(
+        `Server connection failed at ${BASE_URL}. Ensure backend is running.`,
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // OTP Box Navigation & Typing
   const handleOtpChange = (index, value) => {
-    if (isNaN(value)) return;
+    const digit = value.replace(/\D/g, "");
+    if (!digit && value !== "") return;
+
     const newOtp = [...otp];
-    newOtp[index] = value.substring(value.length - 1);
+    newOtp[index] = digit.slice(-1);
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    if (digit && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
     }
   };
@@ -90,22 +104,42 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
   };
 
-  // 2. Verify OTP
-  const handleVerifyOtp = async (e) => {
+  const handlePaste = (e) => {
     e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (pasted.length > 0) {
+      const digits = pasted.split("");
+      const newOtp = [...otp];
+      digits.forEach((d, i) => {
+        if (i < 6) newOtp[i] = d;
+      });
+      setOtp(newOtp);
+      const nextIndex = Math.min(digits.length, 5);
+      otpInputRefs.current[nextIndex]?.focus();
+    }
+  };
+
+  // 2. Verify OTP Action
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
     const enteredOtp = otp.join("");
     if (enteredOtp.length !== 6) {
-      setErrorMsg("Enter full 6-digit OTP");
+      setErrorMsg("Please enter the complete 6-digit code");
       return;
     }
+
     setErrorMsg("");
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+      const cleanPhone = phone.trim().replace(/\D/g, "");
+      const res = await fetch(`${BASE_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp: enteredOtp }),
+        body: JSON.stringify({ phone: cleanPhone, otp: enteredOtp }),
       });
       const data = await res.json();
 
@@ -119,10 +153,10 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
           onClose();
         }
       } else {
-        setErrorMsg(data.error || "Incorrect OTP");
+        setErrorMsg(data.error || "The code entered is incorrect or expired");
       }
     } catch {
-      setErrorMsg("Verification failed. Check backend.");
+      setErrorMsg("Verification service unavailable. Try again shortly.");
     } finally {
       setLoading(false);
     }
@@ -130,23 +164,25 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   // 3. Complete Profile (Save Names into DB)
   const handleSaveProfile = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!profile.firstName.trim()) {
-      setErrorMsg("First name is mandatory");
+      setErrorMsg("First name is required to complete profile");
       return;
     }
+
     setErrorMsg("");
     setLoading(true);
 
+    const cleanPhone = phone.trim().replace(/\D/g, "");
     const payload = {
-      phone,
+      phone: cleanPhone,
       firstName: profile.firstName.trim(),
       lastName: profile.lastName.trim(),
       email: profile.email.trim(),
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/complete-profile`, {
+      const res = await fetch(`${BASE_URL}/api/auth/complete-profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -158,10 +194,10 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         onClose();
       } else {
         const errData = await res.json();
-        setErrorMsg(errData.error || "Could not save profile");
+        setErrorMsg(errData.error || "Could not save your details");
       }
     } catch {
-      setErrorMsg("Profile save failed.");
+      setErrorMsg("Profile service temporarily unavailable.");
     } finally {
       setLoading(false);
     }
@@ -169,64 +205,74 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs font-sans"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs font-sans"
       onClick={onClose}
     >
       <div
         className="relative w-full max-w-sm sm:max-w-md bg-[#FAF8EE] rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E9E4CE] text-[#1B2E1E]"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Dismiss Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 p-1 rounded-full cursor-pointer"
+          type="button"
+          aria-label="Close"
+          className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 p-1 rounded-full cursor-pointer transition-colors"
         >
           <X size={18} />
         </button>
 
-        {/* STEP 1: PHONE NUMBER */}
+        {/* ================= STEP 1: PHONE ================= */}
         {step === "PHONE" && (
           <div className="space-y-6 text-center">
             <div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#1B2E1E] tracking-tight">
                 Login with OTP
               </h2>
-              <p className="text-xs sm:text-sm text-stone-600 mt-1 font-medium">
-                Enter your log in details
+              <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                Enter your mobile number to proceed
               </p>
             </div>
 
-            <form onSubmit={handleRequestOtp} className="space-y-4">
-              <div className="flex items-center bg-white border border-[#D5D0B8] rounded-xl px-3 py-2.5 shadow-2xs focus-within:border-[#67B043] transition-colors">
+            <div className="space-y-4">
+              <div className="flex items-center bg-white border border-[#D5D0B8] rounded-xl px-3 py-2.5 shadow-2xs focus-within:border-[#67B043] focus-within:ring-1 focus-within:ring-[#67B043] transition-all">
                 <div className="flex items-center gap-1.5 pr-2.5 border-r border-stone-200 shrink-0">
                   <span className="text-lg leading-none">🇮🇳</span>
-                  <span className="text-xs font-bold text-stone-700">▼</span>
+                  <span className="text-xs font-semibold text-stone-700">
+                    +91
+                  </span>
                 </div>
                 <input
                   type="tel"
                   maxLength={10}
-                  pattern="[0-9]{10}"
-                  placeholder="Phone number"
+                  placeholder="Enter 10-digit number"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => e.key === "Enter" && handleRequestOtp(e)}
                   className="w-full pl-3 text-sm font-medium text-stone-800 placeholder-stone-400 outline-none bg-transparent"
                   autoFocus
                 />
               </div>
 
               {errorMsg && (
-                <p className="text-xs text-rose-600 font-semibold">
+                <p className="text-xs text-rose-600 font-medium text-left">
                   {errorMsg}
                 </p>
               )}
 
               <button
-                type="submit"
+                type="button"
+                onClick={handleRequestOtp}
                 disabled={loading}
-                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-sm rounded-xl transition-all active:scale-98 shadow-sm cursor-pointer disabled:opacity-50"
+                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] disabled:bg-[#A3D28E] text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? "Sending..." : "Request OTP"}
+                {loading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  "Request OTP"
+                )}
               </button>
-            </form>
+            </div>
 
             <div className="relative flex items-center justify-center my-4">
               <div className="w-full border-t border-[#D5D0B8]" />
@@ -240,7 +286,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 type="button"
                 className="flex items-center justify-center gap-2 bg-[#F3EED8] hover:bg-[#EAE4CA] border border-[#DDD5B9] py-2.5 rounded-xl text-xs font-semibold text-stone-700 transition-colors"
               >
-                <Phone size={14} /> Phone
+                <Phone size={14} /> Mobile
               </button>
               <button
                 type="button"
@@ -249,103 +295,123 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <Mail size={14} /> Email
               </button>
             </div>
+
+            <p className="text-[11px] text-stone-500">
+              By proceeding, you agree to our{" "}
+              <span className="underline cursor-pointer text-stone-700">
+                Terms of Use
+              </span>{" "}
+              and{" "}
+              <span className="underline cursor-pointer text-stone-700">
+                Privacy Policy
+              </span>
+              .
+            </p>
           </div>
         )}
 
-        {/* STEP 2: OTP VERIFICATION */}
+        {/* ================= STEP 2: OTP ================= */}
         {step === "OTP" && (
           <div className="space-y-6 text-center">
             <div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#1B2E1E] tracking-tight">
-                Enter OTP
+                Enter Verification Code
               </h2>
               <p className="text-xs sm:text-sm text-stone-600 mt-1">
-                The OTP is sent to your Phone number
+                We've sent a 6-digit code to your phone
               </p>
             </div>
 
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-sm sm:text-base font-bold text-stone-800 tracking-wider">
+            <div className="inline-flex items-center justify-center gap-2 px-3 py-1 bg-[#F3EED8] rounded-full border border-[#DDD5B9]">
+              <span className="text-xs font-semibold text-stone-800 tracking-wider">
                 +91 {phone}
               </span>
               <button
                 type="button"
                 onClick={() => setStep("PHONE")}
-                className="p-1 text-stone-600 hover:text-black cursor-pointer"
+                className="text-stone-500 hover:text-black cursor-pointer"
+                title="Change phone number"
               >
-                <Edit3 size={15} />
+                <Edit3 size={13} />
               </button>
             </div>
 
-            {bannerHint && (
-              <div className="py-1 px-3 bg-[#EBF7EE] text-[#2F6B38] text-xs font-bold rounded-lg border border-[#CDE5D3]">
-                {bannerHint}
-              </div>
-            )}
-
-            <form onSubmit={handleVerifyOtp} className="space-y-5">
-              <div className="flex justify-center gap-2 sm:gap-3">
+            <div className="space-y-5">
+              <div
+                className="flex justify-center gap-2 sm:gap-2.5"
+                onPaste={handlePaste}
+              >
                 {otp.map((digit, idx) => (
                   <input
                     key={idx}
                     ref={(el) => (otpInputRefs.current[idx] = el)}
                     type="text"
+                    inputMode="numeric"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-10 h-12 sm:w-11 sm:h-12 text-center text-lg font-bold text-stone-800 bg-white border border-[#D5D0B8] rounded-lg focus:border-[#67B043] outline-none shadow-2xs"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleVerifyOtp(e);
+                      else handleKeyDown(idx, e);
+                    }}
+                    className="w-10 h-12 sm:w-11 sm:h-12 text-center text-lg font-bold text-stone-800 bg-white border border-[#D5D0B8] rounded-xl focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043] outline-none transition-all shadow-2xs"
+                    autoFocus={idx === 0}
                   />
                 ))}
               </div>
 
               {errorMsg && (
-                <p className="text-xs text-rose-600 font-semibold">
-                  {errorMsg}
-                </p>
+                <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>
               )}
 
               <button
-                type="submit"
+                type="button"
+                onClick={handleVerifyOtp}
                 disabled={loading}
-                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-sm rounded-xl transition-all active:scale-98 shadow-sm cursor-pointer disabled:opacity-50"
+                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] disabled:bg-[#A3D28E] text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? "Verifying..." : "Verify OTP"}
+                {loading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  "Verify Code"
+                )}
               </button>
 
-              <div className="space-y-1 text-xs text-stone-500 pt-1">
-                <p>Didn't Receive the OTP?</p>
+              <div className="text-xs text-stone-600 pt-1">
+                <span className="block mb-1 text-stone-500">
+                  Didn't receive code?
+                </span>
                 {canResend ? (
                   <button
                     type="button"
                     onClick={handleRequestOtp}
-                    className="font-bold underline text-[#67B043] hover:text-[#599E38] cursor-pointer"
+                    className="font-bold text-[#67B043] hover:text-[#599E38] cursor-pointer underline"
                   >
-                    Resend OTP
+                    Resend Code
                   </button>
                 ) : (
-                  <span className="font-bold text-stone-700">
-                    Resend OTP in 00:{timer < 10 ? `0${timer}` : timer}
+                  <span className="font-semibold text-stone-600">
+                    Resend in 00:{timer < 10 ? `0${timer}` : timer}
                   </span>
                 )}
               </div>
-            </form>
+            </div>
           </div>
         )}
 
-        {/* STEP 3: CUSTOMER DATA COLLECTION */}
+        {/* ================= STEP 3: PROFILE ================= */}
         {step === "PROFILE" && (
           <div className="space-y-5 text-left">
             <div className="text-center">
               <h2 className="text-xl font-extrabold text-[#1B2E1E]">
-                Personalize Your Pantry
+                Welcome to Pure Organics
               </h2>
               <p className="text-xs text-stone-600 mt-1">
-                Provide your details to link previous and future orders
+                Tell us your name so we can personalize your harvest orders
               </p>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-3.5">
+            <div className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
                   First Name *
@@ -358,7 +424,8 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={(e) =>
                     setProfile({ ...profile, firstName: e.target.value })
                   }
-                  className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043]"
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile(e)}
+                  className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043]"
                   autoFocus
                 />
               </div>
@@ -374,7 +441,8 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={(e) =>
                     setProfile({ ...profile, lastName: e.target.value })
                   }
-                  className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043]"
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile(e)}
+                  className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043]"
                 />
               </div>
 
@@ -389,24 +457,31 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={(e) =>
                     setProfile({ ...profile, email: e.target.value })
                   }
-                  className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043]"
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile(e)}
+                  className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043]"
                 />
               </div>
 
               {errorMsg && (
-                <p className="text-xs text-rose-600 font-semibold">
-                  {errorMsg}
-                </p>
+                <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>
               )}
 
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer mt-2"
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={loading || !profile.firstName.trim()}
+                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] disabled:bg-[#A3D28E] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mt-2"
               >
-                {loading ? "Saving Details..." : "Save & Access Account"}
+                {loading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    <span>Complete Setup</span>
+                    <ArrowRight size={14} />
+                  </>
+                )}
               </button>
-            </form>
+            </div>
           </div>
         )}
       </div>
