@@ -28,43 +28,38 @@ export default function AnnouncementBar() {
   }, []);
 
   return (
-    <header className="w-full select-none font-sans z-50 relative">
-      {/* Top Banner: Rich Botanical Forest Green with Golden Harvest Accents */}
-      <div className="w-full bg-[#1b3b27] py-2.5 px-4 sm:px-8 border-b border-[#244c33] text-white shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
+    <header className="w-full select-none font-sans z-50 relative border-b border-brand-border">
+      {/* Primary Top Bar: Deep Forest Green with Crisp Badging */}
+      <div className="w-full bg-brand-dark py-2.5 px-4 sm:px-8 text-white">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           {/* Sale Hook */}
-          <div className="flex items-center gap-2.5 flex-wrap justify-center">
-            {/* --- UPGRADED LUXURY GOLD FOIL BADGE --- */}
-            <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-[#fde68a] via-[#f59e0b] to-[#d97706] text-[#1b3b27] text-[10px] font-black uppercase tracking-[0.2em] px-3 py-0.5 rounded-full shadow-sm border border-[#fef3c7]/60">
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <span className="inline-flex items-center gap-1.5 bg-brand-green/20 text-[#A3E6B4] text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-0.5 rounded-full border border-brand-green/40">
               <span className="text-[11px] leading-none">✦</span>
               Harvest Special
             </span>
-            {/* -------------------------------------- */}
             <p className="text-white text-xs sm:text-sm font-semibold tracking-wide">
-              FLAT{" "}
-              <span className="text-[#fbbf24] font-black text-sm sm:text-base">
-                50% OFF
-              </span>{" "}
-              ON OUR FARM BESTSELLERS
+              FLAT <span className="text-[#F7D070] font-bold">50% OFF</span> ON
+              OUR FARM BESTSELLERS
             </p>
           </div>
 
-          {/* High-Contrast Countdown Clock */}
-          <div className="flex items-center gap-2 bg-black/30 backdrop-blur border border-white/15 px-3 py-1 rounded-full text-white">
-            <Clock className="w-3.5 h-3.5 text-[#fbbf24] animate-pulse" />
-            <span className="text-[11px] uppercase tracking-wider text-emerald-100 font-medium">
+          {/* Clean Pill Countdown */}
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xs border border-white/15 px-3 py-1 rounded-full text-white">
+            <Clock className="w-3.5 h-3.5 text-[#F7D070]" />
+            <span className="text-[11px] uppercase tracking-wider text-[#D1E7D6] font-medium">
               Ends In:
             </span>
-            <div className="flex items-center gap-1 font-mono font-bold text-xs sm:text-sm text-[#fbbf24]">
-              <span className="bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
+            <div className="flex items-center gap-1 font-mono font-bold text-xs text-white">
+              <span className="bg-black/30 px-1.5 py-0.5 rounded">
                 {timeLeft.hours}h
               </span>
               <span>:</span>
-              <span className="bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
+              <span className="bg-black/30 px-1.5 py-0.5 rounded">
                 {timeLeft.minutes}m
               </span>
               <span>:</span>
-              <span className="bg-[#fbbf24] text-[#1b3b27] px-1.5 py-0.5 rounded font-black">
+              <span className="bg-brand-green text-white px-1.5 py-0.5 rounded">
                 {timeLeft.seconds}s
               </span>
             </div>
@@ -73,7 +68,7 @@ export default function AnnouncementBar() {
       </div>
 
       {/* Fresh Sage & Cream Ticker */}
-      <div className="w-full bg-[#eef5ee] py-2 border-b border-[#d8e8d8] overflow-hidden">
+      <div className="w-full bg-brand-cream py-2 border-b border-brand-border overflow-hidden">
         <style>{`
           @keyframes marquee {
             0% { transform: translateX(0%); }
@@ -89,31 +84,31 @@ export default function AnnouncementBar() {
           }
         `}</style>
 
-        <div className="animate-marquee items-center text-[11px] sm:text-xs tracking-wider uppercase font-semibold text-[#1b3b27]">
+        <div className="animate-marquee items-center text-[11px] sm:text-xs tracking-wider uppercase font-semibold text-brand-dark">
           {[1, 2].map((group) => (
             <div
               key={group}
               className="flex items-center space-x-10 sm:space-x-14 pr-10 sm:pr-14 shrink-0"
             >
               <span className="flex items-center gap-2">
-                <Truck className="w-3.5 h-3.5 text-[#2e7d4d]" />
-                free shipping for orders above 499
+                <Truck className="w-3.5 h-3.5 text-brand-green" />
+                Free Shipping Above ₹499
               </span>
-              <span className="text-[#a3c9a8]">◆</span>
+              <span className="text-brand-border-dark opacity-30">◆</span>
               <span className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#2e7d4d]" /> 100%
+                <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
                 Native Wood-Pressed • Zero Chemicals
               </span>
-              <span className="text-[#a3c9a8]">◆</span>
+              <span className="text-brand-border-dark opacity-30">◆</span>
               <span>
                 Use Coupon:{" "}
-                <strong className="text-[#b45309] bg-[#fef3c7] px-2 py-0.5 rounded border border-[#fde68a]">
+                <strong className="text-brand-dark bg-white px-2 py-0.5 rounded-full border border-brand-border">
                   HARVEST50
                 </strong>
               </span>
-              <span className="text-[#a3c9a8]">◆</span>
+              <span className="text-brand-border-dark opacity-30">◆</span>
               <span>Direct Single-Origin Farm Harvests</span>
-              <span className="text-[#a3c9a8]">◆</span>
+              <span className="text-brand-border-dark opacity-30">◆</span>
             </div>
           ))}
         </div>

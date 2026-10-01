@@ -5,9 +5,8 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import CartDrawer from "../components/CartDrawer";
 import DiscountModal from "../components/DiscountModal";
-
-// Import your newly created component:
 import StorefrontChatbot from "./StorefrontChatbor";
+
 export default function ClientLayout() {
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
 
@@ -36,7 +35,7 @@ export default function ClientLayout() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#faf7f2] text-[#1b2e23] antialiased selection:bg-[#2d5a3f] selection:text-white relative">
+    <div className="flex flex-col min-h-screen bg-brand-bg text-brand-dark font-sans antialiased selection:bg-brand-green selection:text-white relative">
       <AnnouncementBar />
       <Navbar />
       <CartDrawer />
@@ -53,7 +52,6 @@ export default function ClientLayout() {
         onSubmit={handleSubmitDiscount}
       />
 
-      {/* Floating Chatbot Widget */}
       <StorefrontChatbot />
     </div>
   );

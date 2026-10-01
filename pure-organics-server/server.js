@@ -4,10 +4,20 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
+const twilio = require("twilio");
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+// Initialize Twilio Client
+const twilioAccountSid = (process.env.TWILIO_ACCOUNT_SID || "").trim();
+const twilioAuthToken = (process.env.TWILIO_AUTH_TOKEN || "").trim();
+const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886";
+
+const twilioClient = (twilioAccountSid && twilioAuthToken && twilioAccountSid.startsWith("AC"))
+  ? twilio(twilioAccountSid, twilioAuthToken)
+  : null;
 
 // Root Health-Check Route
 app.get("/", (req, res) => {
@@ -18,7 +28,6 @@ app.get("/", (req, res) => {
 const isCloudDatabase = Boolean(
   process.env.DB_HOST &&
   (process.env.DB_HOST.includes("tidbcloud.com") ||
-   process.env.DB_HOST.includes("aivencloud.com") ||
    process.env.DB_PORT === "4000")
 );
 
@@ -78,7 +87,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 3. Users table
+    // 3. Admin / Staff Users table
     conn.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -139,6 +148,31 @@ db.getConnection((err, conn) => {
         cod_available BOOLEAN DEFAULT TRUE,
         shipping_charge DECIMAL(6, 2) DEFAULT 0.00,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 9. Customer Accounts table
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        phone VARCHAR(20) NOT NULL UNIQUE,
+        first_name VARCHAR(100) DEFAULT '',
+        last_name VARCHAR(100) DEFAULT '',
+        email VARCHAR(150) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 10. Temporary Customer OTP Storage table
+    conn.query(`
+      CREATE TABLE IF NOT EXISTS customer_otps (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        phone VARCHAR(20) NOT NULL,
+        otp_code VARCHAR(6) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_phone (phone)
       )
     `);
 
@@ -358,7 +392,217 @@ app.patch("/api/orders/:trackingId/status", (req, res) => {
 });
 
 // ==========================================
-// 4. HOMEPAGE CMS ROUTES
+// 4. CUSTOMER OTP AUTHENTICATION & PROFILES
+// ==========================================
+
+// 4.1 Request OTP: Stores phone in DB & dispatches OTP via Twilio WhatsApp / Console
+app.post("/api/auth/send-otp", (req, res) => {
+  const { phone } = req.body;
+  const cleanedPhone = (phone || "").replace(/\D/g, "");
+
+  if (!cleanedPhone || cleanedPhone.length !== 10) {
+    return res.status(400).json({ error: "A valid 10-digit mobile number is required" });
+  }
+
+  // 1. Immediately store or update the phone number in `customers`
+  const saveCustomerSql = `
+    INSERT INTO customers (phone) 
+    VALUES (?) 
+    ON DUPLICATE KEY UPDATE updated_at = NOW()
+  `;
+
+  db.query(saveCustomerSql, [cleanedPhone], (dbErr) => {
+    if (dbErr) {
+      console.error("Database save error:", dbErr.message);
+      return res.status(500).json({ error: "Failed to register mobile number in system" });
+    }
+
+    // 2. Generate 6-digit OTP with 5-minute expiry
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // 3. Clear existing OTPs and insert the new code
+    db.query("DELETE FROM customer_otps WHERE phone = ?", [cleanedPhone], () => {
+      db.query(
+        "INSERT INTO customer_otps (phone, otp_code, expires_at) VALUES (?, ?, ?)",
+        [cleanedPhone, otpCode, expiresAt],
+        async (otpErr) => {
+          if (otpErr) {
+            return res.status(500).json({ error: "Failed to initialize OTP generation" });
+          }
+
+          // 4. Send WhatsApp message via Twilio (if credentials present)
+          if (twilioClient) {
+            try {
+              const whatsappMessage = await twilioClient.messages.create({
+                from: twilioWhatsAppNumber,
+                to: `whatsapp:+91${cleanedPhone}`,
+                body: `🌿 *Pure Organics Login Code*\n\nYour one-time verification code is: *${otpCode}*\n\nValid for 5 minutes. Please do not share it with anyone.`,
+              });
+              console.log(`📲 WhatsApp OTP dispatched! SID: ${whatsappMessage.sid}`);
+            } catch (twilioErr) {
+              console.error("❌ Twilio WhatsApp Error:", twilioErr.message);
+            }
+          } else {
+            console.warn("⚠️ Twilio credentials not configured. Using console log fallback.");
+          }
+
+          // Always log to server terminal for immediate testing
+          console.log(`\n======================================================`);
+          console.log(`✅ Customer phone saved in MySQL: +91 ${cleanedPhone}`);
+          console.log(`🔑 Live OTP for verification: [ ${otpCode} ]`);
+          console.log(`⏱️  Expires at: ${expiresAt.toLocaleTimeString()}`);
+          console.log(`======================================================\n`);
+
+          return res.json({
+            success: true,
+            message: "OTP sent via WhatsApp successfully",
+            ...(process.env.NODE_ENV !== "production" && { testOtp: otpCode }),
+          });
+        }
+      );
+    });
+  });
+});
+
+// 4.2 Verify OTP and check if user profile exists
+app.post("/api/auth/verify-otp", (req, res) => {
+  const { phone, otp } = req.body;
+  const cleanedPhone = (phone || "").replace(/\D/g, "");
+  const trimmedOtp = (otp || "").trim();
+
+  if (!cleanedPhone || trimmedOtp.length !== 6) {
+    return res.status(400).json({ error: "Valid 10-digit phone and 6-digit OTP required" });
+  }
+
+  const sql = `
+    SELECT * FROM customer_otps 
+    WHERE phone = ? AND otp_code = ? AND expires_at > NOW() 
+    ORDER BY id DESC LIMIT 1
+  `;
+
+  db.query(sql, [cleanedPhone, trimmedOtp], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: "Invalid or expired OTP. Please request a new one." });
+    }
+
+    // Clear verified OTP
+    db.query("DELETE FROM customer_otps WHERE phone = ?", [cleanedPhone]);
+
+    // Check if customer profile exists
+    db.query("SELECT * FROM customers WHERE phone = ?", [cleanedPhone], (custErr, custResults) => {
+      if (custErr) return res.status(500).json({ error: custErr.message });
+
+      if (custResults.length > 0 && custResults[0].first_name) {
+        const customer = custResults[0];
+        return res.json({
+          success: true,
+          isNewUser: false,
+          token: crypto.randomBytes(32).toString("hex"),
+          customer: {
+            id: customer.id,
+            phone: customer.phone,
+            firstName: customer.first_name,
+            lastName: customer.last_name,
+            email: customer.email,
+          },
+        });
+      } else {
+        // Needs onboarding details (First Name, Last Name, Email)
+        return res.json({
+          success: true,
+          isNewUser: true,
+          phone: cleanedPhone,
+        });
+      }
+    });
+  });
+});
+
+// 4.3 Complete or update customer profile
+app.post("/api/auth/complete-profile", (req, res) => {
+  const { phone, firstName, lastName, email } = req.body;
+  const cleanedPhone = (phone || "").replace(/\D/g, "");
+
+  if (!cleanedPhone || !firstName || !firstName.trim()) {
+    return res.status(400).json({ error: "Phone number and First Name are mandatory" });
+  }
+
+  const sql = `
+    INSERT INTO customers (phone, first_name, last_name, email)
+    VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE 
+      first_name = VALUES(first_name), 
+      last_name = VALUES(last_name), 
+      email = VALUES(email)
+  `;
+
+  db.query(
+    sql,
+    [cleanedPhone, firstName.trim(), (lastName || "").trim(), (email || "").trim().toLowerCase()],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      return res.json({
+        success: true,
+        message: "Customer profile saved successfully",
+        customer: {
+          phone: cleanedPhone,
+          firstName: firstName.trim(),
+          lastName: (lastName || "").trim(),
+          email: (email || "").trim(),
+        },
+      });
+    }
+  );
+});
+
+// 4.4 Get Order History for a Logged-In Customer
+app.get("/api/customer/orders/:phone", (req, res) => {
+  const { phone } = req.params;
+  const cleanedPhone = (phone || "").replace(/\D/g, "");
+
+  const sql = `
+    SELECT tracking_id, customer_name, total_amount, status, dispatch_note, created_at
+    FROM orders
+    WHERE customer_phone LIKE ?
+    ORDER BY id DESC
+  `;
+
+  db.query(sql, [`%${cleanedPhone}%`], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// 4.5 Admin: View All Registered Customers with Order Counts
+app.get("/api/admin/customers", (req, res) => {
+  const sql = `
+    SELECT 
+      c.id,
+      c.phone,
+      c.first_name,
+      c.last_name,
+      c.email,
+      c.created_at,
+      COUNT(o.id) AS total_orders,
+      IFNULL(SUM(o.total_amount), 0) AS total_spent
+    FROM customers c
+    LEFT JOIN orders o ON o.customer_phone LIKE CONCAT('%', c.phone, '%')
+    GROUP BY c.id
+    ORDER BY total_orders DESC, c.id DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// ==========================================
+// 5. HOMEPAGE CMS ROUTES
 // ==========================================
 
 app.get("/api/cms/homepage", (req, res) => {
@@ -391,7 +635,7 @@ app.put("/api/cms/homepage/:sectionKey", (req, res) => {
 });
 
 // ==========================================
-// 5. NEWSLETTER & BIRTHDAY LEADS ROUTES
+// 6. NEWSLETTER & BIRTHDAY LEADS ROUTES
 // ==========================================
 
 app.post("/api/newsletter", (req, res) => {
@@ -453,7 +697,7 @@ app.get("/api/leads", (req, res) => {
 });
 
 // ==========================================
-// 6. SEARCH ANALYTICS & INSIGHTS
+// 7. SEARCH ANALYTICS & INSIGHTS
 // ==========================================
 
 app.post("/api/analytics/search", (req, res) => {
@@ -524,7 +768,7 @@ app.get("/api/admin/analytics", (req, res) => {
 });
 
 // ==========================================
-// 7. ADMIN AUTHENTICATION
+// 8. ADMIN AUTHENTICATION
 // ==========================================
 
 app.post("/api/auth/login", (req, res) => {
@@ -540,7 +784,7 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 // ==========================================
-// 8. ONLINE PAYMENT ROUTES (Razorpay)
+// 9. ONLINE PAYMENT ROUTES (Razorpay)
 // ==========================================
 
 app.post("/api/payment/create-order", async (req, res) => {
@@ -636,7 +880,7 @@ app.post("/api/payment/verify", (req, res) => {
 });
 
 // ==========================================
-// 9. REAL-TIME AI ASSISTANT (Powered by Google Gemini 3.5 Flash Lite)
+// 10. REAL-TIME AI ASSISTANT (Google Gemini 3.5 Flash Lite)
 // ==========================================
 
 app.post("/api/ai/assistant", async (req, res) => {
@@ -649,7 +893,7 @@ app.post("/api/ai/assistant", async (req, res) => {
 
     const trimmedMsg = message.trim();
 
-    // 1. Order Tracking Lookup (e.g., PO-123456 or 6 digits)
+    // 1. Order Tracking Lookup
     const trackingMatch = trimmedMsg.match(/PO-?\d{5,7}/i) || trimmedMsg.match(/\b\d{6}\b/);
     if (trackingMatch) {
       let searchId = trackingMatch[0].toUpperCase();
@@ -723,7 +967,7 @@ Guidelines:
 
     const geminiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 4. Call Google Gemini 3.5 Flash Lite directly
+    // 4. Call Google Gemini 3.5 Flash Lite
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${geminiKey}`;
 
     const response = await fetch(endpoint, {
@@ -742,7 +986,6 @@ Guidelines:
           },
         ],
         generationConfig: {
-          temperature: 0.6,
           maxOutputTokens: 350,
         },
       }),

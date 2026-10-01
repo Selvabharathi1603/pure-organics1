@@ -1,23 +1,27 @@
 @import "tailwindcss";
 
+@theme {
+  /* Surface & Canvas */
+  --color-brand-bg: #EBF7EE;       /* Soft pale sage green canvas */
+  --color-brand-cream: #FAF6EB;    /* Warm linen & card surface */
+  --color-brand-card: #FFFFFF;     /* Pure white for product cards */
+
+  /* Text & Contrast */
+  --color-brand-dark: #1B2E1E;     /* Deep forest green for headings and primary buttons */
+  --color-brand-green: #2F6B38;    /* Fresh leaf green accent */
+  --color-brand-subtext: #4A5D4E;  /* Balanced body copy */
+  --color-brand-muted: #8A9C8E;    /* Subtle placeholder / metadata text */
+
+  /* Borders & Dividers */
+  --color-brand-border: #DDECE1;   /* Delicate divider line */
+  --color-brand-border-dark: #2A402E; /* Darker outline for pills/buttons */
+}
+
 @layer base {
   body {
-    @apply bg-[#faf7f2] text-[#162a1e] antialiased selection:bg-[#2e7d4d] selection:text-white;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-
-  /* Custom Botanical Green & Linen Scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #faf7f2;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #c5d8cc;
-    border-radius: 9999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #2e7d4d;
+    background-color: var(--color-brand-bg);
+    color: var(--color-brand-dark);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }

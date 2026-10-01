@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useStore } from "../context/storecontext";
 import { API_BASE_URL } from "../config/api";
 
-// High-resolution reliable fallback organic harvest image
 const BACKUP_HARVEST_IMAGE =
   "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80";
 
@@ -13,19 +12,16 @@ export default function DiscountModal({
   const store = useStore?.() || {};
   const cms = store.discountConfig || store.cmsData?.discount_modal || {};
 
-  // Internal state that ALWAYS opens on every page refresh/reload
   const [internalOpen, setInternalOpen] = useState(false);
 
   useEffect(() => {
-    // Clear any previous persistent blocks if they were stored in browser
     try {
       localStorage.removeItem("hasSeenDiscount");
       localStorage.removeItem("discountModalShown");
       sessionStorage.removeItem("hasSeenDiscount");
       sessionStorage.removeItem("discountModalShown");
-    } catch (e) {}
+    } catch {}
 
-    // Pop up smoothly 600ms after component mounts on every refresh
     const timer = setTimeout(() => {
       setInternalOpen(true);
     }, 600);
@@ -33,7 +29,6 @@ export default function DiscountModal({
     return () => clearTimeout(timer);
   }, []);
 
-  // Safe fallbacks to prevent empty text or broken image layout
   const badge = cms.badge?.trim() ? cms.badge : "New Harvest Welcome";
   const headline = cms.headline?.trim()
     ? cms.headline
@@ -57,9 +52,7 @@ export default function DiscountModal({
     if (externalOnClose) externalOnClose();
   };
 
-  // Open if either internal timer triggers or external prop is true
   const showModal = internalOpen || Boolean(externalIsOpen);
-
   if (!showModal) return null;
 
   const handleChange = (e) => {
@@ -103,11 +96,11 @@ export default function DiscountModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#162a1e]/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-dark/50 backdrop-blur-xs font-sans"
       onClick={handleClose}
     >
       <div
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-[#e8e2d5]"
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-brand-border"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -115,48 +108,48 @@ export default function DiscountModal({
           type="button"
           onClick={handleClose}
           aria-label="Close"
-          className="absolute top-3 right-3 z-30 text-stone-500 hover:text-stone-900 text-sm font-bold w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white flex items-center justify-center transition-colors cursor-pointer shadow-xs"
+          className="absolute top-3 right-3 z-30 text-brand-dark hover:text-black text-sm font-bold w-8 h-8 rounded-full bg-white border border-brand-border flex items-center justify-center transition-colors cursor-pointer"
         >
           ✕
         </button>
 
-        {/* Left Side: Product / Farm Harvest Image */}
-        <div className="w-full md:w-1/2 bg-[#faf7f2] min-h-[220px] md:min-h-[360px] relative overflow-hidden flex items-center justify-center">
+        {/* Left Side: Photo */}
+        <div className="w-full md:w-1/2 bg-brand-bg min-h-[200px] md:min-h-[340px] relative overflow-hidden flex items-center justify-center">
           <img
             src={displayImage}
             alt="Organic Harvest Offer"
             onError={() => setDisplayImage(BACKUP_HARVEST_IMAGE)}
-            className="w-full h-full object-cover object-center absolute inset-0"
+            className="w-full h-full object-cover absolute inset-0"
           />
         </div>
 
         {/* Right Side: Form */}
-        <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-center text-center md:text-left">
+        <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-center text-center md:text-left bg-white">
           {submitted ? (
             <div className="py-8 text-center space-y-2">
               <span className="text-3xl">🌱</span>
-              <h3 className="font-serif text-lg font-bold text-[#1b3b27]">
+              <h3 className="text-base font-bold text-brand-dark">
                 Welcome to the Family!
               </h3>
-              <p className="text-xs text-[#5c7365]">
+              <p className="text-xs text-brand-subtext">
                 Use code <strong>HARVEST10</strong> at checkout.
               </p>
             </div>
           ) : (
             <>
-              <span className="text-[10px] font-bold text-[#2e7d4d] uppercase tracking-widest block mb-1">
+              <span className="text-[10px] font-bold text-brand-green uppercase tracking-widest block mb-1">
                 {badge}
               </span>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#162a1e] leading-tight">
+              <h2 className="text-xl sm:text-2xl font-bold text-brand-dark leading-tight">
                 {headline}
               </h2>
-              <p className="text-xs text-[#5c7365] mt-2">{subtext}</p>
+              <p className="text-xs text-brand-subtext mt-1">{subtext}</p>
 
               <form onSubmit={handleSubmit} className="mt-5 space-y-3">
                 <div>
                   <label
                     htmlFor="dob"
-                    className="block text-left text-[11px] font-medium text-stone-600 mb-1"
+                    className="block text-left text-[11px] font-medium text-brand-dark mb-1"
                   >
                     Date of Birth
                   </label>
@@ -167,20 +160,20 @@ export default function DiscountModal({
                     value={formData.dob}
                     onChange={handleChange}
                     required
-                    className="w-full px-3.5 py-2.5 text-xs border border-[#dcd4c7] rounded-xl focus:outline-none focus:border-[#2e7d4d] text-stone-700 bg-[#faf7f2]"
+                    className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg focus:outline-none focus:border-brand-dark text-brand-dark bg-brand-bg"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="phone"
-                    className="block text-left text-[11px] font-medium text-stone-600 mb-1"
+                    className="block text-left text-[11px] font-medium text-brand-dark mb-1"
                   >
                     Phone Number
                   </label>
-                  <div className="flex rounded-xl border border-[#dcd4c7] focus-within:border-[#2e7d4d] overflow-hidden bg-[#faf7f2]">
-                    <span className="inline-flex items-center px-3 bg-[#eee8dd] text-stone-600 text-xs font-medium border-r border-[#dcd4c7]">
-                      IN +91
+                  <div className="flex rounded-lg border border-brand-border focus-within:border-brand-dark overflow-hidden bg-brand-bg">
+                    <span className="inline-flex items-center px-3 bg-white text-brand-dark text-xs font-medium border-r border-brand-border">
+                      +91
                     </span>
                     <input
                       id="phone"
@@ -188,11 +181,11 @@ export default function DiscountModal({
                       name="phone"
                       pattern="[0-9]{10}"
                       maxLength={10}
-                      placeholder="Enter 10-digit Number"
+                      placeholder="10-digit number"
                       value={formData.phone}
                       onChange={handleChange}
                       required
-                      className="w-full px-3 py-2 text-xs focus:outline-none text-stone-800 bg-transparent"
+                      className="w-full px-3 py-2 text-xs focus:outline-none text-brand-dark bg-transparent"
                     />
                   </div>
                 </div>
@@ -200,7 +193,7 @@ export default function DiscountModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 px-4 bg-[#1b3b27] hover:bg-[#255236] text-white text-xs font-bold rounded-xl tracking-wider uppercase transition-colors shadow-md cursor-pointer disabled:opacity-60"
+                  className="w-full py-2.5 px-4 bg-brand-dark hover:bg-brand-green text-white text-xs font-bold rounded-full tracking-wider uppercase transition-colors shadow-sm cursor-pointer disabled:opacity-60 mt-2"
                 >
                   {loading ? "Saving..." : "Claim Harvest Discount"}
                 </button>
