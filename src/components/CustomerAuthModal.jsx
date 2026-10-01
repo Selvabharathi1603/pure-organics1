@@ -1,26 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  X,
-  Phone,
-  Mail,
-  Edit3,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-} from "lucide-react";
+import { X, Phone, Mail, Edit3 } from "lucide-react";
 import { API_BASE_URL } from "../config/api";
 
 export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
-  // Step: 'PHONE' -> 'OTP' -> 'PROFILE'
-  const [step, setStep] = useState("PHONE");
+  const [step, setStep] = useState("PHONE"); // 'PHONE' -> 'OTP' -> 'PROFILE'
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [bannerHint, setBannerHint] = useState("");
 
-  // Step 3 Profile fields
   const [profile, setProfile] = useState({
     firstName: "",
     lastName: "",
@@ -29,7 +20,6 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   const otpInputRefs = useRef([]);
 
-  // Resend Countdown
   useEffect(() => {
     let interval = null;
     if (step === "OTP" && timer > 0) {
@@ -43,7 +33,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   if (!isOpen) return null;
 
-  // Handle Request OTP
+  // 1. Request OTP
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     if (phone.trim().length !== 10) {
@@ -60,31 +50,35 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         body: JSON.stringify({ phone: phone.trim() }),
       });
       const data = await res.json();
+
       if (res.ok) {
         setStep("OTP");
         setTimer(30);
         setCanResend(false);
+
+        // Demo Helper: Shows OTP in a discrete banner so testing never stalls
+        if (data.demoOtp) {
+          setBannerHint(`Demo Code: ${data.demoOtp}`);
+          // Pre-split for quick autofill
+          const digits = data.demoOtp.split("");
+          setOtp(digits);
+        }
       } else {
         setErrorMsg(data.error || "Failed to dispatch OTP");
       }
     } catch (err) {
-      // Fallback for local demo if backend is offline
-      setStep("OTP");
-      setTimer(30);
-      setCanResend(false);
+      setErrorMsg("Network error. Check backend server.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle OTP Box Input & Auto-focus next box
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
-    // Auto focus next
     if (value && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
     }
@@ -96,7 +90,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
   };
 
-  // Handle Verify OTP
+  // 2. Verify OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     const enteredOtp = otp.join("");
@@ -128,20 +122,20 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         setErrorMsg(data.error || "Incorrect OTP");
       }
     } catch {
-      // Local fallback simulator: move to profile details
-      setStep("PROFILE");
+      setErrorMsg("Verification failed. Check backend.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Profile Save (First Name, Last Name, Email)
+  // 3. Complete Profile (Save Names into DB)
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     if (!profile.firstName.trim()) {
       setErrorMsg("First name is mandatory");
       return;
     }
+    setErrorMsg("");
     setLoading(true);
 
     const payload = {
@@ -152,17 +146,25 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     };
 
     try {
-      await fetch(`${API_BASE_URL}/api/auth/complete-profile`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/complete-profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-    } catch {}
 
-    localStorage.setItem("customer_info", JSON.stringify(payload));
-    if (onLoginSuccess) onLoginSuccess(payload);
-    setLoading(false);
-    onClose();
+      if (res.ok) {
+        localStorage.setItem("customer_info", JSON.stringify(payload));
+        if (onLoginSuccess) onLoginSuccess(payload);
+        onClose();
+      } else {
+        const errData = await res.json();
+        setErrorMsg(errData.error || "Could not save profile");
+      }
+    } catch {
+      setErrorMsg("Profile save failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -174,7 +176,6 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         className="relative w-full max-w-sm sm:max-w-md bg-[#FAF8EE] rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E9E4CE] text-[#1B2E1E]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Icon */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 p-1 rounded-full cursor-pointer"
@@ -182,7 +183,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
           <X size={18} />
         </button>
 
-        {/* ================= STEP 1: PHONE NUMBER INPUT ================= */}
+        {/* STEP 1: PHONE NUMBER */}
         {step === "PHONE" && (
           <div className="space-y-6 text-center">
             <div>
@@ -195,10 +196,8 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
             </div>
 
             <form onSubmit={handleRequestOtp} className="space-y-4">
-              {/* Phone Input Box with Indian Flag */}
               <div className="flex items-center bg-white border border-[#D5D0B8] rounded-xl px-3 py-2.5 shadow-2xs focus-within:border-[#67B043] transition-colors">
                 <div className="flex items-center gap-1.5 pr-2.5 border-r border-stone-200 shrink-0">
-                  {/* Indian Flag Emoji/Badge */}
                   <span className="text-lg leading-none">🇮🇳</span>
                   <span className="text-xs font-bold text-stone-700">▼</span>
                 </div>
@@ -214,9 +213,12 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 />
               </div>
 
-              {errorMsg && <p className="text-xs text-rose-600">{errorMsg}</p>}
+              {errorMsg && (
+                <p className="text-xs text-rose-600 font-semibold">
+                  {errorMsg}
+                </p>
+              )}
 
-              {/* Request OTP Button (Exact Green from image) */}
               <button
                 type="submit"
                 disabled={loading}
@@ -226,7 +228,6 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
               </button>
             </form>
 
-            {/* Divider */}
             <div className="relative flex items-center justify-center my-4">
               <div className="w-full border-t border-[#D5D0B8]" />
               <span className="absolute bg-[#FAF8EE] px-3 text-[11px] font-medium text-stone-500 uppercase tracking-wider">
@@ -234,7 +235,6 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
               </span>
             </div>
 
-            {/* Alternate Options (Phone / Email pills) */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -249,17 +249,10 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <Mail size={14} /> Email
               </button>
             </div>
-
-            <p className="text-[11px] text-stone-500 pt-2">
-              I accept that I have read and agree to the{" "}
-              <a href="/privacy" className="font-bold underline text-stone-700">
-                Privacy Policy
-              </a>
-            </p>
           </div>
         )}
 
-        {/* ================= STEP 2: OTP VERIFICATION ================= */}
+        {/* STEP 2: OTP VERIFICATION */}
         {step === "OTP" && (
           <div className="space-y-6 text-center">
             <div>
@@ -267,11 +260,10 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 Enter OTP
               </h2>
               <p className="text-xs sm:text-sm text-stone-600 mt-1">
-                The OTP is sent on Phone number & WhatsApp
+                The OTP is sent to your Phone number
               </p>
             </div>
 
-            {/* Active Phone Number with Edit Icon */}
             <div className="flex items-center justify-center gap-2">
               <span className="text-sm sm:text-base font-bold text-stone-800 tracking-wider">
                 +91 {phone}
@@ -280,13 +272,17 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 type="button"
                 onClick={() => setStep("PHONE")}
                 className="p-1 text-stone-600 hover:text-black cursor-pointer"
-                title="Change Phone Number"
               >
                 <Edit3 size={15} />
               </button>
             </div>
 
-            {/* 6-Digit OTP Box Grid */}
+            {bannerHint && (
+              <div className="py-1 px-3 bg-[#EBF7EE] text-[#2F6B38] text-xs font-bold rounded-lg border border-[#CDE5D3]">
+                {bannerHint}
+              </div>
+            )}
+
             <form onSubmit={handleVerifyOtp} className="space-y-5">
               <div className="flex justify-center gap-2 sm:gap-3">
                 {otp.map((digit, idx) => (
@@ -298,15 +294,17 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
-                    className="w-10 h-12 sm:w-11 sm:h-12 text-center text-lg font-bold text-stone-800 bg-white border border-[#D5D0B8] rounded-lg focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043] outline-none shadow-2xs"
-                    autoFocus={idx === 0}
+                    className="w-10 h-12 sm:w-11 sm:h-12 text-center text-lg font-bold text-stone-800 bg-white border border-[#D5D0B8] rounded-lg focus:border-[#67B043] outline-none shadow-2xs"
                   />
                 ))}
               </div>
 
-              {errorMsg && <p className="text-xs text-rose-600">{errorMsg}</p>}
+              {errorMsg && (
+                <p className="text-xs text-rose-600 font-semibold">
+                  {errorMsg}
+                </p>
+              )}
 
-              {/* Verify OTP Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -315,7 +313,6 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 {loading ? "Verifying..." : "Verify OTP"}
               </button>
 
-              {/* Resend OTP Timer Logic */}
               <div className="space-y-1 text-xs text-stone-500 pt-1">
                 <p>Didn't Receive the OTP?</p>
                 {canResend ? (
@@ -336,7 +333,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
           </div>
         )}
 
-        {/* ================= STEP 3: CUSTOMER DATA COLLECTION ================= */}
+        {/* STEP 3: CUSTOMER DATA COLLECTION */}
         {step === "PROFILE" && (
           <div className="space-y-5 text-left">
             <div className="text-center">
@@ -344,7 +341,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 Personalize Your Pantry
               </h2>
               <p className="text-xs text-stone-600 mt-1">
-                Provide your details to track orders & delivery updates
+                Provide your details to link previous and future orders
               </p>
             </div>
 
@@ -356,7 +353,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Anand"
+                  placeholder="e.g. Selva"
                   value={profile.firstName}
                   onChange={(e) =>
                     setProfile({ ...profile, firstName: e.target.value })
@@ -372,7 +369,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Kumar"
+                  placeholder="e.g. Bharathi"
                   value={profile.lastName}
                   onChange={(e) =>
                     setProfile({ ...profile, lastName: e.target.value })
@@ -383,11 +380,11 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
               <div>
                 <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
-                  Email Address (for Invoices & Tracking)
+                  Email Address
                 </label>
                 <input
                   type="email"
-                  placeholder="anand@example.com"
+                  placeholder="name@example.com"
                   value={profile.email}
                   onChange={(e) =>
                     setProfile({ ...profile, email: e.target.value })
@@ -396,14 +393,18 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 />
               </div>
 
-              {errorMsg && <p className="text-xs text-rose-600">{errorMsg}</p>}
+              {errorMsg && (
+                <p className="text-xs text-rose-600 font-semibold">
+                  {errorMsg}
+                </p>
+              )}
 
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer mt-2"
               >
-                {loading ? "Saving Details..." : "Complete & Enter Store"}
+                {loading ? "Saving Details..." : "Save & Access Account"}
               </button>
             </form>
           </div>

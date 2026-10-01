@@ -4,20 +4,10 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
-const twilio = require("twilio");
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
-
-// Initialize Twilio Client
-const twilioAccountSid = (process.env.TWILIO_ACCOUNT_SID || "").trim();
-const twilioAuthToken = (process.env.TWILIO_AUTH_TOKEN || "").trim();
-const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886";
-
-const twilioClient = (twilioAccountSid && twilioAuthToken && twilioAccountSid.startsWith("AC"))
-  ? twilio(twilioAccountSid, twilioAuthToken)
-  : null;
 
 // Root Health-Check Route
 app.get("/", (req, res) => {
@@ -151,7 +141,7 @@ db.getConnection((err, conn) => {
       )
     `);
 
-    // 9. Customer Accounts table
+    // 9. Customer Accounts table (Stores phone, names, and email)
     conn.query(`
       CREATE TABLE IF NOT EXISTS customers (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -395,69 +385,83 @@ app.patch("/api/orders/:trackingId/status", (req, res) => {
 // 4. CUSTOMER OTP AUTHENTICATION & PROFILES
 // ==========================================
 
-// 4.1 Request OTP: Stores phone in DB & dispatches OTP via Twilio WhatsApp / Console
+// 4.1 Request OTP: Saves customer phone to DB immediately & dispatches via Fast2SMS
 app.post("/api/auth/send-otp", (req, res) => {
   const { phone } = req.body;
   const cleanedPhone = (phone || "").replace(/\D/g, "");
 
   if (!cleanedPhone || cleanedPhone.length !== 10) {
-    return res.status(400).json({ error: "A valid 10-digit mobile number is required" });
+    return res.status(400).json({ error: "Please enter a valid 10-digit mobile number" });
   }
 
-  // 1. Immediately store or update the phone number in `customers`
-  const saveCustomerSql = `
+  // 1. Immediately store/update phone number in MySQL customers table
+  const savePhoneSql = `
     INSERT INTO customers (phone) 
     VALUES (?) 
     ON DUPLICATE KEY UPDATE updated_at = NOW()
   `;
 
-  db.query(saveCustomerSql, [cleanedPhone], (dbErr) => {
+  db.query(savePhoneSql, [cleanedPhone], (dbErr) => {
     if (dbErr) {
-      console.error("Database save error:", dbErr.message);
-      return res.status(500).json({ error: "Failed to register mobile number in system" });
+      console.error("Database customer save error:", dbErr.message);
+      return res.status(500).json({ error: "Failed to register number in database" });
     }
 
-    // 2. Generate 6-digit OTP with 5-minute expiry
+    // 2. Generate random 6-digit OTP code (expires in 5 minutes)
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // 3. Clear existing OTPs and insert the new code
+    // 3. Clear existing OTPs and insert the fresh OTP
     db.query("DELETE FROM customer_otps WHERE phone = ?", [cleanedPhone], () => {
       db.query(
         "INSERT INTO customer_otps (phone, otp_code, expires_at) VALUES (?, ?, ?)",
         [cleanedPhone, otpCode, expiresAt],
         async (otpErr) => {
           if (otpErr) {
-            return res.status(500).json({ error: "Failed to initialize OTP generation" });
+            return res.status(500).json({ error: "Failed to generate OTP record" });
           }
 
-          // 4. Send WhatsApp message via Twilio (if credentials present)
-          if (twilioClient) {
+          let smsStatus = "Not Attempted";
+          const fast2smsKey = (process.env.FAST2SMS_API_KEY || "").trim();
+
+          // 4. Dispatch via Fast2SMS official bulkV2 OTP route
+          if (fast2smsKey) {
             try {
-              const whatsappMessage = await twilioClient.messages.create({
-                from: twilioWhatsAppNumber,
-                to: `whatsapp:+91${cleanedPhone}`,
-                body: `🌿 *Pure Organics Login Code*\n\nYour one-time verification code is: *${otpCode}*\n\nValid for 5 minutes. Please do not share it with anyone.`,
-              });
-              console.log(`📲 WhatsApp OTP dispatched! SID: ${whatsappMessage.sid}`);
-            } catch (twilioErr) {
-              console.error("❌ Twilio WhatsApp Error:", twilioErr.message);
+              const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(
+                fast2smsKey
+              )}&variables_values=${otpCode}&route=otp&numbers=${cleanedPhone}`;
+
+              const smsResponse = await fetch(url, { method: "GET" });
+              const smsResult = await smsResponse.json();
+
+              if (smsResult.return === true) {
+                smsStatus = "Delivered via Fast2SMS";
+                console.log(`📡 Fast2SMS dispatched successfully to +91 ${cleanedPhone}`);
+              } else {
+                smsStatus = `Fast2SMS Note: ${smsResult.message || JSON.stringify(smsResult)}`;
+                console.warn("⚠️ Fast2SMS response notice:", smsStatus);
+              }
+            } catch (smsError) {
+              smsStatus = `Gateway error: ${smsError.message}`;
+              console.error("❌ Fast2SMS request error:", smsError.message);
             }
           } else {
-            console.warn("⚠️ Twilio credentials not configured. Using console log fallback.");
+            smsStatus = "FAST2SMS_API_KEY missing in .env";
+            console.warn("⚠️️ FAST2SMS_API_KEY not configured in .env");
           }
 
-          // Always log to server terminal for immediate testing
+          // Terminal visual verification
           console.log(`\n======================================================`);
-          console.log(`✅ Customer phone saved in MySQL: +91 ${cleanedPhone}`);
-          console.log(`🔑 Live OTP for verification: [ ${otpCode} ]`);
+          console.log(`✅ Saved to MySQL Customers: +91 ${cleanedPhone}`);
+          console.log(`🔑 Live OTP Code: [ ${otpCode} ]`);
+          console.log(`📡 SMS Delivery Status: ${smsStatus}`);
           console.log(`⏱️  Expires at: ${expiresAt.toLocaleTimeString()}`);
           console.log(`======================================================\n`);
 
           return res.json({
             success: true,
-            message: "OTP sent via WhatsApp successfully",
-            ...(process.env.NODE_ENV !== "production" && { testOtp: otpCode }),
+            message: "OTP dispatched to your mobile number",
+            demoOtp: otpCode,
           });
         }
       );
@@ -491,7 +495,7 @@ app.post("/api/auth/verify-otp", (req, res) => {
     // Clear verified OTP
     db.query("DELETE FROM customer_otps WHERE phone = ?", [cleanedPhone]);
 
-    // Check if customer profile exists
+    // Check if customer profile has names stored
     db.query("SELECT * FROM customers WHERE phone = ?", [cleanedPhone], (custErr, custResults) => {
       if (custErr) return res.status(500).json({ error: custErr.message });
 
@@ -510,7 +514,7 @@ app.post("/api/auth/verify-otp", (req, res) => {
           },
         });
       } else {
-        // Needs onboarding details (First Name, Last Name, Email)
+        // New user: proceed to step 3 to complete First Name, Last Name, Email
         return res.json({
           success: true,
           isNewUser: true,
@@ -521,7 +525,7 @@ app.post("/api/auth/verify-otp", (req, res) => {
   });
 });
 
-// 4.3 Complete or update customer profile
+// 4.3 Complete Profile: Save First Name, Last Name, Email in MySQL
 app.post("/api/auth/complete-profile", (req, res) => {
   const { phone, firstName, lastName, email } = req.body;
   const cleanedPhone = (phone || "").replace(/\D/g, "");
@@ -543,7 +547,12 @@ app.post("/api/auth/complete-profile", (req, res) => {
     sql,
     [cleanedPhone, firstName.trim(), (lastName || "").trim(), (email || "").trim().toLowerCase()],
     (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        console.error("Profile save error:", err.message);
+        return res.status(500).json({ error: err.message });
+      }
+
+      console.log(`✅ Customer profile saved: ${firstName} ${lastName || ""} (+91 ${cleanedPhone})`);
 
       return res.json({
         success: true,
@@ -1004,7 +1013,6 @@ Guidelines:
 
     const aiReply = data.candidates[0].content.parts[0].text;
 
-    // Match recommended products from catalog
     const matchedIds = (catalog || [])
       .filter((p) => p.name && aiReply.toLowerCase().includes(p.name.toLowerCase()))
       .map((p) => p.id);
