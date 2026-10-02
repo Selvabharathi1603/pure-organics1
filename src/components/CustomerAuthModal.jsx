@@ -3,7 +3,7 @@ import { X, Phone, Mail, Edit3, ArrowRight, Loader2 } from "lucide-react";
 import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
 // Fallback to local server port 5000 if config URL is missing or empty
-const BASE_URL = CONFIG_URL || "http://localhost:5000";
+const BASE_URL = "http://localhost:5000";
 
 export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [step, setStep] = useState("PHONE"); // 'PHONE' | 'OTP' | 'PROFILE'
@@ -46,10 +46,10 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   if (!isOpen) return null;
 
-  // 1. Request OTP Action
-  const handleRequestOtp = async (e) => {
-    if (e) e.preventDefault();
-    const cleanPhone = phone.trim().replace(/\D/g, "");
+  // 1. Request OTP Action (Direct click handler, no form interception)
+  const handleRequestOtp = async () => {
+    const cleanPhone = (phone || "").toString().trim().replace(/\D/g, "");
+    console.log("👉 Triggering handleRequestOtp for:", cleanPhone);
 
     if (cleanPhone.length !== 10) {
       setErrorMsg("Please enter a valid 10-digit mobile number");
@@ -60,12 +60,14 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     setLoading(true);
 
     try {
+      console.log(`📡 Fetching: ${BASE_URL}/api/auth/send-otp`);
       const res = await fetch(`${BASE_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: cleanPhone }),
       });
       const data = await res.json();
+      console.log("📥 Server response:", data);
 
       if (res.ok) {
         setStep("OTP");
@@ -76,6 +78,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         setErrorMsg(data.error || "Failed to dispatch verification code");
       }
     } catch (err) {
+      console.error("❌ Network fetch error:", err);
       setErrorMsg(
         `Server connection failed at ${BASE_URL}. Ensure backend is running.`,
       );
@@ -123,9 +126,10 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
   };
 
   // 2. Verify OTP Action
-  const handleVerifyOtp = async (e) => {
-    if (e) e.preventDefault();
+  const handleVerifyOtp = async () => {
     const enteredOtp = otp.join("");
+    const cleanPhone = (phone || "").toString().trim().replace(/\D/g, "");
+
     if (enteredOtp.length !== 6) {
       setErrorMsg("Please enter the complete 6-digit code");
       return;
@@ -135,13 +139,14 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const cleanPhone = phone.trim().replace(/\D/g, "");
+      console.log(`📡 Fetching: ${BASE_URL}/api/auth/verify-otp`);
       const res = await fetch(`${BASE_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: cleanPhone, otp: enteredOtp }),
       });
       const data = await res.json();
+      console.log("📥 Verify response:", data);
 
       if (res.ok) {
         if (data.isNewUser) {
@@ -155,16 +160,16 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
       } else {
         setErrorMsg(data.error || "The code entered is incorrect or expired");
       }
-    } catch {
+    } catch (err) {
+      console.error("❌ Verification error:", err);
       setErrorMsg("Verification service unavailable. Try again shortly.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Complete Profile (Save Names into DB)
-  const handleSaveProfile = async (e) => {
-    if (e) e.preventDefault();
+  // 3. Complete Profile Action (Save Name & Email to MySQL)
+  const handleSaveProfile = async () => {
     if (!profile.firstName.trim()) {
       setErrorMsg("First name is required to complete profile");
       return;
@@ -173,7 +178,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     setErrorMsg("");
     setLoading(true);
 
-    const cleanPhone = phone.trim().replace(/\D/g, "");
+    const cleanPhone = (phone || "").toString().trim().replace(/\D/g, "");
     const payload = {
       phone: cleanPhone,
       firstName: profile.firstName.trim(),
@@ -182,6 +187,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
     };
 
     try {
+      console.log(`📡 Fetching: ${BASE_URL}/api/auth/complete-profile`);
       const res = await fetch(`${BASE_URL}/api/auth/complete-profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,7 +202,8 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         const errData = await res.json();
         setErrorMsg(errData.error || "Could not save your details");
       }
-    } catch {
+    } catch (err) {
+      console.error("❌ Profile save error:", err);
       setErrorMsg("Profile service temporarily unavailable.");
     } finally {
       setLoading(false);
@@ -243,12 +250,13 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   </span>
                 </div>
                 <input
-                  type="tel"
+                  type="text"
+                  inputMode="numeric"
                   maxLength={10}
                   placeholder="Enter 10-digit number"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(e) => e.key === "Enter" && handleRequestOtp(e)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRequestOtp()}
                   className="w-full pl-3 text-sm font-medium text-stone-800 placeholder-stone-400 outline-none bg-transparent"
                   autoFocus
                 />
@@ -264,7 +272,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 type="button"
                 onClick={handleRequestOtp}
                 disabled={loading}
-                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] disabled:bg-[#A3D28E] text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -284,13 +292,13 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 bg-[#F3EED8] hover:bg-[#EAE4CA] border border-[#DDD5B9] py-2.5 rounded-xl text-xs font-semibold text-stone-700 transition-colors"
+                className="flex items-center justify-center gap-2 bg-[#F3EED8] hover:bg-[#EAE4CA] border border-[#DDD5B9] py-2.5 rounded-xl text-xs font-semibold text-stone-700 transition-colors cursor-pointer"
               >
                 <Phone size={14} /> Mobile
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 bg-[#F3EED8] hover:bg-[#EAE4CA] border border-[#DDD5B9] py-2.5 rounded-xl text-xs font-semibold text-stone-700 transition-colors"
+                className="flex items-center justify-center gap-2 bg-[#F3EED8] hover:bg-[#EAE4CA] border border-[#DDD5B9] py-2.5 rounded-xl text-xs font-semibold text-stone-700 transition-colors cursor-pointer"
               >
                 <Mail size={14} /> Email
               </button>
@@ -351,7 +359,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleVerifyOtp(e);
+                      if (e.key === "Enter") handleVerifyOtp();
                       else handleKeyDown(idx, e);
                     }}
                     className="w-10 h-12 sm:w-11 sm:h-12 text-center text-lg font-bold text-stone-800 bg-white border border-[#D5D0B8] rounded-xl focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043] outline-none transition-all shadow-2xs"
@@ -368,7 +376,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 type="button"
                 onClick={handleVerifyOtp}
                 disabled={loading}
-                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] disabled:bg-[#A3D28E] text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -418,13 +426,12 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Selva"
                   value={profile.firstName}
                   onChange={(e) =>
                     setProfile({ ...profile, firstName: e.target.value })
                   }
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile(e)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile()}
                   className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043]"
                   autoFocus
                 />
@@ -441,7 +448,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={(e) =>
                     setProfile({ ...profile, lastName: e.target.value })
                   }
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile(e)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile()}
                   className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043]"
                 />
               </div>
@@ -457,7 +464,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={(e) =>
                     setProfile({ ...profile, email: e.target.value })
                   }
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile(e)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveProfile()}
                   className="w-full bg-white border border-[#D5D0B8] rounded-xl px-3.5 py-2.5 text-xs text-stone-800 outline-none focus:border-[#67B043] focus:ring-1 focus:ring-[#67B043]"
                 />
               </div>
@@ -469,8 +476,8 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
               <button
                 type="button"
                 onClick={handleSaveProfile}
-                disabled={loading || !profile.firstName.trim()}
-                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] disabled:bg-[#A3D28E] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mt-2"
+                disabled={loading}
+                className="w-full py-3 bg-[#67B043] hover:bg-[#599E38] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 mt-2"
               >
                 {loading ? (
                   <Loader2 size={16} className="animate-spin" />
