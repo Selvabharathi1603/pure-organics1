@@ -5,15 +5,13 @@ import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
 const BASE_URL = CONFIG_URL || "http://localhost:5000";
 
-// High-fidelity agricultural imagery corresponding to each category
-const HARVEST_CATEGORIES = [
+const FALLBACK_CATEGORIES = [
   {
     id: 1,
     category_key: "oils",
     name: "Wood-Pressed Oils",
     tamil: "மரச்செக்கு எண்ணெய்",
     count: "6 Cold Batches",
-    // Rustic amber apothecary oil bottle with herbal sprigs on weathered wood
     image:
       "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
     target_link: "/shop?cat=oils",
@@ -24,7 +22,6 @@ const HARVEST_CATEGORIES = [
     name: "Heirloom Rice & Millets",
     tamil: "பாரம்பரிய தானியங்கள்",
     count: "9 Heritage Grains",
-    // Multi-grain ceramic bowls filled with heirloom seeds & ancient unpolished rice
     image:
       "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80",
     target_link: "/shop?cat=grains",
@@ -35,7 +32,6 @@ const HARVEST_CATEGORIES = [
     name: "Raw Forest Honey",
     tamil: "இயற்கை மலைத்தேன்",
     count: "Wild Cliff Harvest",
-    // Glowing amber honey in a glass pot with natural honeycomb & wild flora
     image:
       "https://images.unsplash.com/photo-1587049352851-8d4e89133924?auto=format&fit=crop&w=600&q=80",
     target_link: "/shop?cat=honey",
@@ -46,9 +42,8 @@ const HARVEST_CATEGORIES = [
     name: "Artisanal Palm Jaggery",
     tamil: "உடன்குடி கருப்பட்டி",
     count: "Iron Pan Boiled",
-    // Deep dark artisanal unrefined palm jaggery & unbleached natural sugar blocks
     image:
-      "https://images.unsplash.com/photo-1607672632458-9eb56696346b?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=600&q=80",
     target_link: "/shop?cat=sweeteners",
   },
   {
@@ -57,7 +52,6 @@ const HARVEST_CATEGORIES = [
     name: "Native Peanut Mill",
     tamil: "நாட்டு நிலக்கடலை",
     count: "Sun-Dried Saurashtra",
-    // Sun-dried raw red-skin peanuts in rustic shells & hessian weave
     image:
       "https://images.unsplash.com/photo-1567892320421-1c657571ea4c?auto=format&fit=crop&w=600&q=80",
     target_link: "/shop?cat=oils&item=peanut",
@@ -65,11 +59,11 @@ const HARVEST_CATEGORIES = [
 ];
 
 export default function ShopByCategory() {
-  const [categories, setCategories] = useState(HARVEST_CATEGORIES);
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
 
   useEffect(() => {
     let isMounted = true;
-    const fetchCats = async () => {
+    const fetchCategories = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/categories`);
         const json = await res.json();
@@ -79,20 +73,27 @@ export default function ShopByCategory() {
           Array.isArray(json.data) &&
           json.data.length > 0
         ) {
-          // Merge dynamic labels while preserving the rich photography
-          const merged = HARVEST_CATEGORIES.map((item) => {
+          const merged = FALLBACK_CATEGORIES.map((fallback) => {
             const found = json.data.find(
-              (c) => c.category_key === item.category_key,
+              (c) => c.category_key === fallback.category_key,
             );
-            return found ? { ...item, ...found, image: item.image } : item;
+            return {
+              ...fallback,
+              ...(found || {}),
+              // Use API image only if valid; otherwise keep verified CDN image
+              image:
+                found?.image_url && found.image_url.startsWith("http")
+                  ? found.image_url
+                  : fallback.image,
+            };
           });
           setCategories(merged);
         }
       } catch (err) {
-        // Fallback remains active
+        // Retain fallback list on network failure
       }
     };
-    fetchCats();
+    fetchCategories();
     return () => {
       isMounted = false;
     };
@@ -101,7 +102,7 @@ export default function ShopByCategory() {
   return (
     <section className="w-full bg-white text-[#0D2317] py-14 sm:py-18 border-b border-stone-100 font-sans select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Bar */}
+        {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 border-b border-stone-200/80">
           <div className="space-y-1.5 text-left">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EBF5EE] text-[#14532D] text-[10px] font-black uppercase tracking-[0.22em] border border-[#CDE5D5]">
@@ -125,7 +126,7 @@ export default function ShopByCategory() {
           </Link>
         </div>
 
-        {/* Full-Bleed Photographic Medallions */}
+        {/* Circular Department Medallions */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-7 sm:gap-10 pt-10 max-w-6xl mx-auto">
           {categories.map((cat) => (
             <Link
@@ -133,21 +134,24 @@ export default function ShopByCategory() {
               to={cat.target_link}
               className="group flex flex-col items-center text-center cursor-pointer"
             >
-              {/* Outer Glow Halo Ring */}
+              {/* Outer Gradient Ring */}
               <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1.5 bg-gradient-to-b from-[#E2EFE6] to-[#CBDDD1] group-hover:from-[#15803D] group-hover:to-[#0D2317] transition-all duration-300 shadow-md group-hover:shadow-xl group-hover:-translate-y-1.5">
-                {/* Image Container with Inner Vignette */}
+                {/* Image Container with Vignette Overlay */}
                 <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100 border-2 border-white shadow-inner">
                   <img
                     src={cat.image}
                     alt={cat.name}
                     className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-500 ease-out"
                     loading="lazy"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=500&q=80";
+                    }}
                   />
-                  {/* Subtle darkening gradient at the base for contrast */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 group-hover:opacity-40 transition-opacity" />
                 </div>
 
-                {/* Micro Batch Badge */}
+                {/* Batch Tag */}
                 <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-[#0D2317] text-[#86EFAC] text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full border border-[#225235] shadow-xs whitespace-nowrap">
                   {cat.count || "Pure Harvest"}
                 </span>
