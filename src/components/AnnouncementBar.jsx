@@ -1,114 +1,127 @@
-import React, { useState, useEffect } from "react";
-import { Sparkles, Clock, ShieldCheck, Truck } from "lucide-react";
+import React, { useState } from "react";
+import { Check, Copy, X } from "lucide-react";
 
 export default function AnnouncementBar() {
-  const [timeLeft, setTimeLeft] = useState({
-    hours: "08",
-    minutes: "42",
-    seconds: "19",
-  });
+  const [copied, setCopied] = useState(false);
+  const [visible, setVisible] = useState(true);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        let sec = parseInt(prev.seconds, 10) - 1;
-        if (sec >= 0)
-          return { ...prev, seconds: sec < 10 ? `0${sec}` : `${sec}` };
-        let min = parseInt(prev.minutes, 10) - 1;
-        if (min >= 0)
-          return {
-            ...prev,
-            minutes: min < 10 ? `0${min}` : `${min}`,
-            seconds: "59",
-          };
-        return { hours: "07", minutes: "59", seconds: "59" };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  if (!visible) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText("HARVEST10");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const tickerItems = [
+    { title: "Mara Chekku", note: "Traditional Wood Pestle Extraction" },
+    {
+      title: "Complimentary Delivery",
+      note: "On all Tamil Nadu orders over ₹499",
+    },
+    {
+      title: "Direct Single-Estate",
+      note: "Thanjavur & Tirunelveli Farmlands",
+    },
+    { title: "Zero Adulteration", note: "100% Unrefined & Chemical-Free" },
+    { title: "Small Batch Crushed", note: "Dispatched within 48 Hours" },
+  ];
 
   return (
-    <header className="w-full select-none font-sans z-50 relative border-b border-brand-border">
-      {/* Primary Top Bar: Deep Forest Green with Crisp Badging */}
-      <div className="w-full bg-brand-dark py-2.5 px-4 sm:px-8 text-white">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          {/* Sale Hook */}
-          <div className="flex items-center gap-3 flex-wrap justify-center">
-            <span className="inline-flex items-center gap-1.5 bg-brand-green/20 text-[#A3E6B4] text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-0.5 rounded-full border border-brand-green/40">
-              <span className="text-[11px] leading-none">✦</span>
-              Harvest Special
+    <header className="w-full select-none z-50 relative border-b border-black">
+      {/* ================= 1. LUXURY EDITORIAL TOP BAR ================= */}
+      <div className="w-full bg-[#0a0a0a] text-white py-2 px-4 sm:px-8 border-b border-white/10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between text-xs">
+          {/* Left: Origin Statement */}
+          <div className="hidden md:flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[10px] tracking-[0.25em] uppercase font-semibold text-stone-300">
+              Native Harvest · Autumn 2026 Batch
             </span>
-            <p className="text-white text-xs sm:text-sm font-semibold tracking-wide">
-              FLAT <span className="text-[#F7D070] font-bold">50% OFF</span> ON
-              OUR FARM BESTSELLERS
+          </div>
+
+          {/* Center: Editorial Hook */}
+          <div className="flex-1 text-center">
+            <p className="text-[11px] sm:text-xs tracking-[0.18em] uppercase text-stone-200">
+              Cold-pressed farm staples{" "}
+              <span className="font-serif italic lowercase tracking-normal text-amber-300 text-sm font-normal">
+                delivered
+              </span>{" "}
+              fresh to your pantry
             </p>
           </div>
 
-          {/* Clean Pill Countdown */}
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xs border border-white/15 px-3 py-1 rounded-full text-white">
-            <Clock className="w-3.5 h-3.5 text-[#F7D070]" />
-            <span className="text-[11px] uppercase tracking-wider text-[#D1E7D6] font-medium">
-              Ends In:
-            </span>
-            <div className="flex items-center gap-1 font-mono font-bold text-xs text-white">
-              <span className="bg-black/30 px-1.5 py-0.5 rounded">
-                {timeLeft.hours}h
+          {/* Right: Coupon Copy Pill & Dismiss Button */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCopy}
+              className="group inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-white text-black hover:bg-amber-400 transition-all active:scale-95 cursor-pointer shadow-xs"
+              title="Click to copy promo code"
+            >
+              <span className="text-[9px] font-black tracking-[0.2em] uppercase font-mono">
+                {copied ? "COPIED" : "HARVEST10"}
               </span>
-              <span>:</span>
-              <span className="bg-black/30 px-1.5 py-0.5 rounded">
-                {timeLeft.minutes}m
-              </span>
-              <span>:</span>
-              <span className="bg-brand-green text-white px-1.5 py-0.5 rounded">
-                {timeLeft.seconds}s
-              </span>
-            </div>
+              {copied ? (
+                <Check size={11} className="stroke-[3] text-black" />
+              ) : (
+                <Copy
+                  size={11}
+                  className="text-stone-500 group-hover:text-black transition-colors"
+                />
+              )}
+            </button>
+
+            <button
+              onClick={() => setVisible(false)}
+              className="text-stone-400 hover:text-white transition-colors cursor-pointer"
+              aria-label="Close Announcement"
+            >
+              <X size={14} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Fresh Sage & Cream Ticker */}
-      <div className="w-full bg-brand-cream py-2 border-b border-brand-border overflow-hidden">
+      {/* ================= 2. SEAMLESS WHITE TICKER WITH EDGE FADES ================= */}
+      <div className="relative w-full bg-white text-black py-2.5 overflow-hidden border-b border-stone-200">
+        {/* Soft Left & Right Fade Masks for a High-End Look */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white to-transparent z-10" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white to-transparent z-10" />
+
         <style>{`
-          @keyframes marquee {
+          @keyframes editorial-ticker {
             0% { transform: translateX(0%); }
             100% { transform: translateX(-50%); }
           }
-          .animate-marquee {
+          .ticker-strip {
             display: flex;
             width: max-content;
-            animation: marquee 35s linear infinite;
+            animation: editorial-ticker 26s linear infinite;
           }
-          .animate-marquee:hover {
+          .ticker-strip:hover {
             animation-play-state: paused;
           }
         `}</style>
 
-        <div className="animate-marquee items-center text-[11px] sm:text-xs tracking-wider uppercase font-semibold text-brand-dark">
-          {[1, 2].map((group) => (
+        <div className="ticker-strip items-center">
+          {[1, 2].map((loop) => (
             <div
-              key={group}
-              className="flex items-center space-x-10 sm:space-x-14 pr-10 sm:pr-14 shrink-0"
+              key={loop}
+              className="flex items-center space-x-12 sm:space-x-16 pr-12 sm:pr-16 shrink-0"
             >
-              <span className="flex items-center gap-2">
-                <Truck className="w-3.5 h-3.5 text-brand-green" />
-                Free Shipping Above ₹499
-              </span>
-              <span className="text-brand-border-dark opacity-30">◆</span>
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-brand-green" />
-                Native Wood-Pressed • Zero Chemicals
-              </span>
-              <span className="text-brand-border-dark opacity-30">◆</span>
-              <span>
-                Use Coupon:{" "}
-                <strong className="text-brand-dark bg-white px-2 py-0.5 rounded-full border border-brand-border">
-                  HARVEST50
-                </strong>
-              </span>
-              <span className="text-brand-border-dark opacity-30">◆</span>
-              <span>Direct Single-Origin Farm Harvests</span>
-              <span className="text-brand-border-dark opacity-30">◆</span>
+              {tickerItems.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="text-[11px] sm:text-xs uppercase tracking-[0.22em] font-extrabold text-black">
+                    {item.title}
+                  </span>
+                  <span className="text-[11px] sm:text-xs font-serif italic text-stone-500 tracking-normal font-normal">
+                    — {item.note}
+                  </span>
+                  <span className="text-stone-300 font-serif text-xs select-none pl-4">
+                    ✦
+                  </span>
+                </div>
+              ))}
             </div>
           ))}
         </div>

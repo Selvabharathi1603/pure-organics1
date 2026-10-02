@@ -1,285 +1,398 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight,
+  ShoppingBag,
+  Check,
   Sparkles,
   Star,
+  ArrowRight,
+  Flame,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
 } from "lucide-react";
+import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
-const BESTSELLER_SLIDES = [
+const BASE_URL = CONFIG_URL || "http://localhost:5000";
+
+const HERO_BG_IMAGE =
+  "https://t3.ftcdn.net/jpg/02/71/72/06/360_F_271720694_xeOnMuwr2oiP9PG7yn8cKet1upl76QOu.jpg";
+
+const DEFAULT_HERO_PRODUCTS = [
   {
     id: 1,
-    tag: "Cold-Pressed • Wood Mortar",
-    title: "Pure Virgin",
-    titleHighlight: "Coconut Oil",
-    quote:
-      "Extracted gently from fresh coastal coconut milk in native wooden chekkus below 42°C. Packed with unrefined lauric immunity lipids and zero chemicals.",
-    unit: "500 ml Glass Jar",
-    price: "₹310",
-    originalPrice: "₹620",
-    rating: "4.9",
-    reviews: "1,420+",
-    imageUrl:
-      "https://media.istockphoto.com/id/1484936410/photo/bottle-of-coconut-cooking-oil-and-fruit-on-white-background.jpg?s=612x612&w=0&k=20&c=ATsKubzVwWMQXwVkb93qrXatLac7HFJTIx8f1ng216w=",
-    perks: [
-      "Zero Sulphur Treated",
-      "Rich in Lauric Fatty Acids",
-      "Raw Cold Extracted",
-    ],
+    short_name: "Karupatti",
+    badge: "Udangudi Native",
+    title: "Artisanal Palm Jaggery",
+    tamil: "உடன்குடி பனங்கருப்பட்டி",
+    description:
+      "Clarified Palmyra palm sap slow-boiled in iron cauldrons with organic herbal extract. Natural unbleached blocks with raw iron and zero cane sugar.",
+    price: 180,
+    mrp: 240,
+    unit: "500g Native Block",
+    rating: 4.9,
+    reviews: "2.1k",
+    stock: 19,
+    image_url:
+      "https://media.istockphoto.com/id/2152257228/photo/traditional-market-stall-items-with-palm-sugar-in-a-woven-basket-surrounded-by-garlic-dried.webp?a=1&b=1&s=612x612&w=0&k=20&c=itwYeL006O_v0LdMec0j2f5_7HET13vTi2_nGgdBOdA=",
   },
   {
     id: 2,
-    tag: "Heritage Detox Grain",
-    title: "Heritage Black Rice",
-    titleHighlight: "(Karuppu Kavuni)",
-    quote:
-      "Cherished ancient royal grain rich in natural anthocyanin antioxidants, low glycemic index, and sustained whole-day clean stamina.",
-    unit: "1 kg Eco Pack",
-    price: "₹195",
-    originalPrice: "₹390",
-    rating: "4.9",
-    reviews: "980+",
-    imageUrl:
-      "https://media.istockphoto.com/id/1434453597/photo/close-up-of-black-rice-in-the-field.jpg?s=612x612&w=0&k=20&c=D6LdUQKJGL4AxLEcmpQvUBPn-qXuRajxZj1corlFP6k=",
-    perks: [
-      "Antioxidant Superfood",
-      "100% Whole Bran Intact",
-      "Zero Synthetic Fertilizers",
-    ],
+    short_name: "Peanut Oil",
+    badge: "Cold Crushed",
+    title: "Mara Chekku Peanut Oil",
+    tamil: "மரச்செக்கு கடலை எண்ணெய்",
+    description:
+      "Wood-pressed exclusively from native sun-dried red-skin peanuts. Settled naturally in sunlight without synthetic degumming or solvent extraction.",
+    price: 290,
+    mrp: 380,
+    unit: "1 Litre Glass Bottle",
+    rating: 4.8,
+    reviews: "1.4k",
+    stock: 9,
+    image_url:
+      "https://media.istockphoto.com/id/1072412008/photo/peanuts-in-wooden-bowl-with-peanut-oil.webp?a=1&b=1&s=612x612&w=0&k=20&c=xEfipOm3guxSkT164-uPm_3CVj-rcWtCNhnjsYIB4KE=",
   },
   {
     id: 3,
-    tag: "Unrefined Nectar",
-    title: "Traditional Palm",
-    titleHighlight: "Jaggery (Karupatti)",
-    quote:
-      "Clarified naturally with organic herbal extracts without calcium carbonate or bleaching agents. Rich in bio-active plant iron and natural calcium.",
-    unit: "500g Native Block",
-    price: "₹180",
-    originalPrice: "₹360",
-    rating: "4.9",
-    reviews: "2,150+",
-    imageUrl:
-      "https://media.istockphoto.com/id/2191030648/photo/gula-jawa-or-javanese-sugar-or-red-sugar-or-palm-sugar-in-half-ball-shape-inside-white-bowl.jpg?s=612x612&w=0&k=20&c=stdu8cUEfGy90ay70Ki8oLjtiKEzkESZtnk9ih-rXD8=",
-    perks: [
-      "Zero White Cane Sugar",
-      "Rich Natural Iron Source",
-      "Low GI Natural Sweetener",
-    ],
+    short_name: "Black Rice",
+    badge: "Ancient Chola Grain",
+    title: "Karuppu Kavuni Black Rice",
+    tamil: "நாட்டு கருப்பு கவுனி அரிசி",
+    description:
+      "Traditional antioxidant-rich heirloom paddy grown without chemical sprays. Completely unpolished bran intact with low glycemic response.",
+    price: 190,
+    mrp: 260,
+    unit: "1 Kg Cloth Bag",
+    rating: 4.9,
+    reviews: "920",
+    stock: 7,
+    image_url:
+      "https://images.unsplash.com/photo-1623691307892-d6de6dfb2a8a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmxhY2slMjByaWNlfGVufDB8fDB8fHww",
   },
   {
     id: 4,
-    tag: "Raw Forest Harvest",
-    title: "Wild Raw",
-    titleHighlight: "Forest Honey",
-    quote:
-      "Single-origin raw honey sustainably collected from indigenous deep forest flora. Unheated and unpasteurized, retaining all natural bee pollen.",
-    unit: "500g Glass Jar",
-    price: "₹340",
-    originalPrice: "₹680",
-    rating: "5.0",
-    reviews: "3,400+",
-    imageUrl:
-      "https://images.unsplash.com/photo-1587049352851-8d4e89133924?w=1000&auto=format&fit=crop&q=60",
-    perks: [
-      "Pollen Rich & Unheated",
-      "Zero High-Fructose Syrup",
-      "Ethical Forest Foraged",
-    ],
+    short_name: "Gingelly Oil",
+    badge: "Vaagai Chekku",
+    title: "Wood-Pressed Gingelly Oil",
+    tamil: "பாரம்பரிய வாகை மரச்செக்கு நல்லெண்ணெய்",
+    description:
+      "Native country sesame crushed raw with palm jaggery in traditional wooden mortars below 38°C. Zero paraffin, zero palm oil blending.",
+    price: 360,
+    mrp: 440,
+    unit: "1 Litre Glass Bottle",
+    rating: 4.9,
+    reviews: "1.8k",
+    stock: 12,
+    image_url:
+      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=800&q=80",
   },
   {
     id: 5,
-    tag: "Drought-Resilient Grain",
-    title: "Traditional Foxtail",
-    titleHighlight: "Millet (Thinai)",
-    quote:
-      "Native golden grains harvested from pesticide-free rain-fed farmland. High in complex carbohydrates, digestible fiber, and essential minerals.",
-    unit: "1 kg Pack",
-    price: "₹125",
-    originalPrice: "₹250",
-    rating: "4.8",
-    reviews: "820+",
-    imageUrl:
-      "https://images.unsplash.com/photo-1783042909392-0b8d8683e0a2?w=1000&auto=format&fit=crop&q=60",
-    perks: [
-      "Prebiotic Gut Fiber",
-      "Zero Machine Polish",
-      "Diabetic-Friendly Staple",
-    ],
+    short_name: "Forest Honey",
+    badge: "Western Ghats",
+    title: "Raw Wild Forest Honey",
+    tamil: "சுத்தமான மலைத்தேன்",
+    description:
+      "Collected directly from wild forest hives in Western Ghats. Raw, unfiltered, unheated, and loaded with natural bee pollen.",
+    price: 340,
+    mrp: 460,
+    unit: "500g Jar",
+    rating: 5.0,
+    reviews: "3.1k",
+    stock: 16,
+    image_url:
+      "https://images.unsplash.com/photo-1587049352851-8d4e89133924?auto=format&fit=crop&w=800&q=80",
   },
 ];
 
-export default function HeroSection() {
-  const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+export default function HeroSection({ onAddToCart }) {
+  const [products, setProducts] = useState(DEFAULT_HERO_PRODUCTS);
+  const [index, setIndex] = useState(0);
+  const [added, setAdded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
+  // Keep latest products length in ref to avoid stale closures
+  const lengthRef = useRef(products.length);
   useEffect(() => {
-    if (isPaused) return;
-    const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % BESTSELLER_SLIDES.length);
-    }, 4500);
-    return () => clearInterval(interval);
-  }, [isPaused]);
+    lengthRef.current = products.length;
+  }, [products.length]);
 
-  const slide = BESTSELLER_SLIDES[current];
+  // 1. Fetch backend items
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHeroProducts = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/hero/bestsellers`);
+        const json = await res.json();
+        if (
+          isMounted &&
+          json.success &&
+          Array.isArray(json.data) &&
+          json.data.length > 0
+        ) {
+          setProducts(json.data);
+        }
+      } catch (err) {
+        // Fallback default array stays active
+      }
+    };
+    fetchHeroProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 2. Guaranteed Auto-Slide Interval (every 3.5 seconds)
+  useEffect(() => {
+    if (isHovered) return;
+
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % (lengthRef.current || 1));
+    }, 3500);
+
+    return () => clearInterval(timer);
+  }, [isHovered]);
+
+  const active = products[index] || DEFAULT_HERO_PRODUCTS[0];
+
+  const handleNext = () => setIndex((prev) => (prev + 1) % products.length);
+  const handlePrev = () =>
+    setIndex((prev) => (prev === 0 ? products.length - 1 : prev - 1));
+
+  const handleAdd = () => {
+    setAdded(true);
+    if (onAddToCart) onAddToCart(active);
+    setTimeout(() => setAdded(false), 1800);
+  };
 
   return (
-    <section
-      className="relative w-full bg-brand-bg text-brand-dark overflow-hidden border-b border-brand-border py-14 sm:py-20"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
-      <div className="relative max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        {/* Left Side: Content & Actions */}
-        <div className="lg:col-span-7 space-y-6 text-left">
-          {/* Tag Badges */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white border border-brand-border text-brand-green text-[11px] font-bold tracking-widest uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-brand-green" />
-              {slide.tag}
-            </span>
-
-            <span className="inline-flex items-center bg-brand-cream border border-brand-border text-brand-dark font-bold text-xs px-3.5 py-1 rounded-full uppercase tracking-wider">
-              50% Season Offer
-            </span>
-
-            <div className="flex items-center gap-1.5 text-xs text-brand-subtext bg-white border border-brand-border px-3 py-1 rounded-full">
-              <div className="flex text-[#D97706]">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3 h-3 fill-current" />
-                ))}
-              </div>
-              <span className="font-bold text-brand-dark">{slide.rating}</span>
-              <span className="text-brand-muted text-[11px]">
-                ({slide.reviews})
-              </span>
-            </div>
-          </div>
-
-          {/* Heading */}
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-brand-dark leading-[1.08]">
-            {slide.title} <br />
-            <span className="text-brand-green">{slide.titleHighlight}</span>
-          </h1>
-
-          {/* Subtext */}
-          <p className="text-brand-subtext text-sm sm:text-base leading-relaxed max-w-xl">
-            {slide.quote}
-          </p>
-
-          {/* Perks */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-            {slide.perks.map((perk, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-2 text-xs text-brand-dark font-semibold"
-              >
-                <CheckCircle2 className="w-4 h-4 text-brand-green shrink-0" />
-                <span>{perk}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Price & Unit */}
-          <div className="pt-2 flex items-baseline gap-4">
-            <span className="text-3xl sm:text-4xl font-extrabold text-brand-dark">
-              {slide.price}
-            </span>
-            <span className="text-lg text-brand-muted line-through">
-              {slide.originalPrice}
-            </span>
-            <span className="text-xs font-semibold text-brand-subtext border border-brand-border bg-white px-3 py-1 rounded-full">
-              Net Wt: {slide.unit}
-            </span>
-          </div>
-
-          {/* Call to Actions */}
-          <div className="pt-3 flex flex-wrap items-center gap-4">
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full bg-brand-dark hover:bg-brand-green text-white text-xs uppercase tracking-widest font-bold transition-colors shadow-sm"
-            >
-              Shop Now
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-
-            <Link
-              to="/track"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-bold text-xs uppercase tracking-widest text-brand-dark bg-white hover:bg-brand-cream border border-brand-border transition-colors"
-            >
-              Track Order
-            </Link>
-          </div>
-        </div>
-
-        {/* Right Side: Produce Cutout Canvas[cite: 1] */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
-          <div className="relative w-72 h-72 sm:w-96 sm:h-96 aspect-square flex items-center justify-center">
-            {/* Soft Ambient Disc */}
-            <div className="absolute inset-0 rounded-full bg-white/70 border border-brand-border" />
-
-            {/* Cutout Image with Drop Shadow[cite: 1] */}
-            <div className="relative z-10 w-60 h-60 sm:w-80 sm:h-80 flex items-center justify-center p-4">
-              <img
-                key={slide.id}
-                src={slide.imageUrl}
-                alt={slide.title}
-                className="w-full h-full object-contain drop-shadow-[0_15px_20px_rgba(0,0,0,0.12)] transition-transform duration-500 hover:scale-105"
-              />
-
-              {/* Verified Round Stamp[cite: 1] */}
-              <div className="absolute top-2 right-2 bg-brand-dark text-white text-[9px] uppercase font-bold tracking-widest p-2 rounded-full w-16 h-16 flex flex-col items-center justify-center text-center shadow-md border-2 border-white/50">
-                <span>100%</span>
-                <span>Organic</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden bg-stone-950 text-white select-none font-sans">
+      {/* 1. BACKGROUND */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src={HERO_BG_IMAGE}
+          alt="Tamil Nadu Rice Field Harvest"
+          className="w-full h-full object-cover object-center scale-102 transition-transform duration-1000"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/35" />
       </div>
 
-      {/* Slider Controls */}
-      <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 mt-10 flex items-center justify-between">
-        {/* Dots */}
-        <div className="flex items-center gap-2">
-          {BESTSELLER_SLIDES.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrent(idx)}
-              aria-label={`Slide ${idx + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                current === idx
-                  ? "w-8 bg-brand-dark"
-                  : "w-2 bg-brand-border hover:bg-brand-green"
-              }`}
-            />
-          ))}
-        </div>
+      {/* 2. INNER FOREGROUND GRID */}
+      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-12 lg:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* ================= LEFT COLUMN: FARM CONTENT ================= */}
+          <div className="lg:col-span-7 space-y-4 text-left">
+            {/* Direct Farm Pill */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/60 border border-white/20 text-white text-xs font-semibold tracking-wide backdrop-blur-md shadow-md">
+              <Sparkles size={13} className="text-amber-400" />
+              <span>Direct From Tirunelveli & Thanjavur Farmlands</span>
+            </div>
 
-        {/* Arrows */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              setCurrent((prev) =>
-                prev === 0 ? BESTSELLER_SLIDES.length - 1 : prev - 1,
-              )
-            }
-            aria-label="Previous"
-            className="p-2.5 rounded-full bg-white hover:bg-brand-cream border border-brand-border text-brand-dark transition-colors"
+            {/* Headline */}
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12] drop-shadow-md">
+              Real Mara Chekku Oils <br />
+              <span className="text-amber-400 drop-shadow-md">
+                & Heirloom Grains.
+              </span>
+            </h1>
+
+            {/* Description */}
+            <p className="text-stone-100 text-sm sm:text-base leading-relaxed max-w-xl font-normal drop-shadow-sm min-h-[3.8rem]">
+              {active.description}
+            </p>
+
+            {/* 3 Quality Badges */}
+            <div className="flex flex-wrap gap-2.5 pt-1">
+              <span className="text-xs font-bold text-white bg-black/60 border border-white/20 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-sm">
+                ✓ Zero Palm Oil Blending
+              </span>
+              <span className="text-xs font-bold text-white bg-black/60 border border-white/20 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-sm">
+                ✓ Cold-Milled Below 38°C
+              </span>
+              <span className="text-xs font-bold text-white bg-black/60 border border-white/20 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-sm">
+                ✓ Lab Purity Certificate
+              </span>
+            </div>
+
+            {/* Order Buttons */}
+            <div className="pt-2 flex flex-wrap items-center gap-3.5">
+              <a
+                href="#shop"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-98 cursor-pointer"
+              >
+                <span>Shop Fresh Mill</span>
+                <ArrowRight size={15} />
+              </a>
+
+              <Link
+                to="/track"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-black/50 hover:bg-black/70 border border-white/30 text-white font-bold text-xs backdrop-blur-md transition-all shadow-sm"
+              >
+                <span>Track Order</span>
+              </Link>
+
+              {/* Verified Feedback */}
+              <div className="flex items-center gap-1.5 text-xs text-stone-200 ml-1 bg-black/50 px-3 py-1.5 rounded-full border border-white/15 backdrop-blur-sm">
+                <div className="flex text-amber-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={12} fill="currentColor" />
+                  ))}
+                </div>
+                <span className="font-extrabold text-white">
+                  {active.rating}
+                </span>
+                <span className="text-stone-300 text-[11px]">
+                  ({active.reviews})
+                </span>
+              </div>
+            </div>
+
+            {/* 5-Item Quick Switcher Pills */}
+            <div className="pt-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
+              {products.map((p, i) => (
+                <button
+                  key={p.id}
+                  onClick={() => setIndex(i)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap backdrop-blur-sm ${
+                    index === i
+                      ? "bg-amber-400 text-stone-950 font-bold shadow-md scale-102"
+                      : "bg-black/45 hover:bg-black/70 text-stone-200 border border-white/15"
+                  }`}
+                >
+                  {p.short_name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ================= RIGHT: CIRCLE SPOTLIGHT (Hover pauses only here) ================= */}
+          <div
+            className="lg:col-span-5 flex flex-col items-center justify-center"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() =>
-              setCurrent((prev) => (prev + 1) % BESTSELLER_SLIDES.length)
-            }
-            aria-label="Next"
-            className="p-2.5 rounded-full bg-white hover:bg-brand-cream border border-brand-border text-brand-dark transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <div className="relative flex flex-col items-center">
+              {/* LARGE CIRCLE CONTAINER */}
+              <div
+                onClick={handleNext}
+                title="Click for next item"
+                className="relative w-76 h-76 sm:w-92 sm:h-92 rounded-full p-2 bg-gradient-to-tr from-amber-400/60 via-white/40 to-amber-400/30 shadow-2xl backdrop-blur-md flex items-center justify-center cursor-pointer group"
+              >
+                {/* Product Photo Circle */}
+                <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white shadow-inner bg-black">
+                  <img
+                    key={active.id}
+                    src={active.image_url}
+                    alt={active.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 rounded-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] pointer-events-none" />
+                </div>
+
+                {/* Floating Stock Badge Sitting on Top Center */}
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-950/95 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xl border border-white/30 whitespace-nowrap z-20">
+                  <Flame size={13} className="text-amber-400" />
+                  <span>Only {active.stock} left in batch</span>
+                </div>
+
+                {/* Left Arrow Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrev();
+                  }}
+                  aria-label="Previous product"
+                  className="absolute -left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white text-stone-900 shadow-xl flex items-center justify-center hover:bg-amber-400 transition-colors z-30 cursor-pointer"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+
+                {/* Right Arrow Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNext();
+                  }}
+                  aria-label="Next product"
+                  className="absolute -right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white text-stone-900 shadow-xl flex items-center justify-center hover:bg-amber-400 transition-colors z-30 cursor-pointer"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+
+              {/* Product Meta Section */}
+              <div className="mt-4 text-center max-w-sm flex flex-col items-center">
+                {/* Tamil Name */}
+                <div className="inline-flex items-center px-4 py-1 rounded-full bg-white text-stone-950 text-xs sm:text-sm font-extrabold shadow-lg mb-2 border border-stone-200">
+                  {active.tamil}
+                </div>
+
+                {/* English Title */}
+                <h3 className="text-xl sm:text-2xl font-black text-white drop-shadow-md leading-snug">
+                  {active.title}
+                </h3>
+
+                {/* Pricing & Units */}
+                <div className="mt-2 flex items-center justify-center gap-2.5">
+                  <span className="text-2xl sm:text-3xl font-black text-amber-400 drop-shadow-xs">
+                    ₹{active.price}
+                  </span>
+                  <span className="text-xs line-through text-stone-300 font-medium">
+                    ₹{active.mrp}
+                  </span>
+                  <span className="text-[10px] font-extrabold text-stone-950 bg-amber-400 px-2.5 py-0.5 rounded-full shadow-xs">
+                    Save ₹{active.mrp - active.price}
+                  </span>
+                  <span className="text-[11px] text-stone-200 bg-black/60 px-2.5 py-0.5 rounded-full border border-white/20 backdrop-blur-xs">
+                    {active.unit}
+                  </span>
+                </div>
+
+                {/* Order Button */}
+                <div className="mt-3.5 flex justify-center w-full">
+                  <button
+                    type="button"
+                    onClick={handleAdd}
+                    className={`w-full sm:w-72 py-3 rounded-full font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xl cursor-pointer ${
+                      added
+                        ? "bg-emerald-500 text-stone-950 scale-102"
+                        : "bg-white hover:bg-amber-400 text-stone-950 active:scale-98"
+                    }`}
+                  >
+                    {added ? (
+                      <>
+                        <Check size={16} className="stroke-[3]" />
+                        <span>Added to Cart</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag size={15} />
+                        <span>Claim Batch · ₹{active.price}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Progress Indicators */}
+                <div className="flex items-center justify-center gap-1.5 mt-3.5">
+                  {products.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setIndex(i)}
+                      aria-label={`Go to slide ${i + 1}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                        index === i
+                          ? "w-6 bg-amber-400"
+                          : "w-1.5 bg-white/40 hover:bg-white/70"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
