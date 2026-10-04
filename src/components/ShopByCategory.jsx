@@ -5,7 +5,7 @@ import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
 const BASE_URL = CONFIG_URL || "http://localhost:5000";
 
-const FALLBACK_CATEGORIES = [
+const EXACT_MATCH_CATEGORIES = [
   {
     id: 1,
     category_key: "oils",
@@ -13,7 +13,7 @@ const FALLBACK_CATEGORIES = [
     tamil: "மரச்செக்கு எண்ணெய்",
     count: "6 Cold Batches",
     image:
-      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+      "https://media.istockphoto.com/id/1395867248/photo/rosemary-essential-oil-or-infusion-on-an-old-wooden-table.jpg?s=612x612&w=0&k=20&c=-QggcpSyV91hemES4cCqmHfdnkFNW4kmgP89IVEGeg8=",
     target_link: "/shop?cat=oils",
   },
   {
@@ -23,7 +23,7 @@ const FALLBACK_CATEGORIES = [
     tamil: "பாரம்பரிய தானியங்கள்",
     count: "9 Heritage Grains",
     image:
-      "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80",
+      "https://media.istockphoto.com/id/671580278/photo/varieties-of-grains-seeds-and-raw-quino.jpg?s=612x612&w=0&k=20&c=ATTVKd0ls6JoL4AvGZ-K6bs_q8rlkJDEyzOLu0d2vrA=",
     target_link: "/shop?cat=grains",
   },
   {
@@ -33,7 +33,7 @@ const FALLBACK_CATEGORIES = [
     tamil: "இயற்கை மலைத்தேன்",
     count: "Wild Cliff Harvest",
     image:
-      "https://images.unsplash.com/photo-1587049352851-8d4e89133924?auto=format&fit=crop&w=600&q=80",
+      "https://media.istockphoto.com/id/598241944/photo/honey-in-jar-and-bunch-of-dry-lavender.jpg?s=612x612&w=0&k=20&c=gVg1BaJ78uniQbpfdFiYvMzim98gREdx-5c4ENBp2tE=",
     target_link: "/shop?cat=honey",
   },
   {
@@ -43,27 +43,27 @@ const FALLBACK_CATEGORIES = [
     tamil: "உடன்குடி கருப்பட்டி",
     count: "Iron Pan Boiled",
     image:
-      "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=600&q=80",
+      "https://media.istockphoto.com/id/869266164/photo/jaggery-sugar-and-cane.jpg?s=2048x2048&w=is&k=20&c=Xa-DIQ73T41G4JDIBWhI-1-gkrpXct1I7FkehubDMUQ=",
     target_link: "/shop?cat=sweeteners",
   },
   {
     id: 5,
-    category_key: "groundnut",
-    name: "Native Peanut Mill",
-    tamil: "நாட்டு நிலக்கடலை",
-    count: "Sun-Dried Saurashtra",
+    category_key: "pickle",
+    name: "Native Farm Preserves",
+    tamil: "பாரம்பரிய பண்ணை ஊறல்",
+    count: "Authentic Taste",
     image:
-      "https://images.unsplash.com/photo-1567892320421-1c657571ea4c?auto=format&fit=crop&w=600&q=80",
-    target_link: "/shop?cat=oils&item=peanut",
+      "https://media.istockphoto.com/id/1338316600/photo/image-glass-jar-of-green-mango-chutney-recipe-with-hessian-lid-pickle-with-chopped-raw-mango.jpg?s=2048x2048&w=is&k=20&c=2EGNmLNNt2zC0utGXglHoaTog--981l9Wxatly2DuYw=",
+    target_link: "/shop?cat=preserves",
   },
 ];
 
 export default function ShopByCategory() {
-  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
+  const [categories, setCategories] = useState(EXACT_MATCH_CATEGORIES);
 
   useEffect(() => {
     let isMounted = true;
-    const fetchCategories = async () => {
+    const fetchCats = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/categories`);
         const json = await res.json();
@@ -73,96 +73,96 @@ export default function ShopByCategory() {
           Array.isArray(json.data) &&
           json.data.length > 0
         ) {
-          const merged = FALLBACK_CATEGORIES.map((fallback) => {
+          const merged = EXACT_MATCH_CATEGORIES.map((item) => {
             const found = json.data.find(
-              (c) => c.category_key === fallback.category_key,
+              (c) => c.category_key === item.category_key,
             );
-            return {
-              ...fallback,
-              ...(found || {}),
-              // Use API image only if valid; otherwise keep verified CDN image
-              image:
-                found?.image_url && found.image_url.startsWith("http")
-                  ? found.image_url
-                  : fallback.image,
-            };
+            return found
+              ? {
+                  ...item,
+                  name: found.name || item.name,
+                  count: found.batch_count || item.count,
+                }
+              : item;
           });
           setCategories(merged);
         }
       } catch (err) {
-        // Retain fallback list on network failure
+        // Safe fallback maintains verified imagery
       }
     };
-    fetchCategories();
+    fetchCats();
     return () => {
       isMounted = false;
     };
   }, []);
 
   return (
-    <section className="w-full bg-white text-[#0D2317] py-14 sm:py-18 border-b border-stone-100 font-sans select-none">
+    <section className="w-full bg-white text-[#18181b] pt-6 pb-24 border-b border-stone-100 font-sans select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 border-b border-stone-200/80">
+        {/* Section Header: Styled with Navbar PureOrganics Amber & Carbon */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-stone-200/80">
           <div className="space-y-1.5 text-left">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EBF5EE] text-[#14532D] text-[10px] font-black uppercase tracking-[0.22em] border border-[#CDE5D5]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+            {/* Pill matched to PureOrganics badge accent */}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fef3c7]/60 text-[#b45309] text-[10px] font-black uppercase tracking-[0.22em] border border-[#fde68a]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#d97706] animate-pulse" />
               Direct Farm Harvest
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-[#0D2317] tracking-tight">
-              Shop by Department
+            <h2 className="text-2xl sm:text-4xl font-black text-[#18181b] tracking-tight">
+              Shop by <span className="text-[#d97706]">Department</span>
             </h2>
           </div>
 
           <Link
             to="/shop"
-            className="group inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#166534] hover:text-[#0D2317] transition-colors"
+            className="group inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#18181b] hover:text-[#d97706] transition-colors"
           >
             <span>Explore All Harvests</span>
             <ArrowUpRight
               size={15}
-              className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+              className="text-[#d97706] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
             />
           </Link>
         </div>
 
         {/* Circular Department Medallions */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-7 sm:gap-10 pt-10 max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 pt-10 max-w-6xl mx-auto">
           {categories.map((cat) => (
             <Link
               key={cat.id || cat.category_key}
               to={cat.target_link}
               className="group flex flex-col items-center text-center cursor-pointer"
             >
-              {/* Outer Gradient Ring */}
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1.5 bg-gradient-to-b from-[#E2EFE6] to-[#CBDDD1] group-hover:from-[#15803D] group-hover:to-[#0D2317] transition-all duration-300 shadow-md group-hover:shadow-xl group-hover:-translate-y-1.5">
-                {/* Image Container with Vignette Overlay */}
-                <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100 border-2 border-white shadow-inner">
+              {/* Outer Circular Frame: PureOrganics Charcoal Rim + Amber Glow on Hover */}
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1 bg-white border-[3px] border-white ring-2 ring-stone-200 group-hover:ring-[#d97706] shadow-[0_6px_20px_rgba(24,24,27,0.06)] group-hover:shadow-[0_12px_28px_rgba(217,119,6,0.25)] transition-all duration-300 group-hover:-translate-y-1.5">
+                {/* Full-Bleed Inner Image */}
+                <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100">
                   <img
                     src={cat.image}
                     alt={cat.name}
-                    className="w-full h-full object-cover group-hover:scale-115 transition-transform duration-500 ease-out"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                     loading="lazy"
                     onError={(e) => {
                       e.target.src =
-                        "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=500&q=80";
+                        "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 group-hover:opacity-40 transition-opacity" />
+                  {/* Subtle Dark Vignette with warm undertone */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent group-hover:opacity-40 transition-opacity" />
                 </div>
 
-                {/* Batch Tag */}
-                <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-[#0D2317] text-[#86EFAC] text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full border border-[#225235] shadow-xs whitespace-nowrap">
-                  {cat.count || "Pure Harvest"}
+                {/* Batch Tag: Navbar PureOrganics Black Capsule + Amber Text */}
+                <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-[#18181b] text-[#fbbf24] text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full border border-[#d97706]/40 shadow-sm whitespace-nowrap group-hover:bg-[#d97706] group-hover:text-[#18181b] group-hover:border-[#b45309] transition-colors">
+                  {cat.count}
                 </span>
               </div>
 
               {/* Department Name & Tamil Subtitle */}
               <div className="mt-5 space-y-0.5">
-                <h3 className="font-extrabold text-[#0D2317] text-sm tracking-tight group-hover:text-[#15803D] transition-colors leading-tight">
+                <h3 className="font-extrabold text-[#18181b] text-sm tracking-tight group-hover:text-[#d97706] transition-colors leading-tight">
                   {cat.name}
                 </h3>
-                <p className="text-[11px] font-serif italic text-[#4A7258] font-medium">
+                <p className="text-[11px] font-serif italic text-stone-500 group-hover:text-[#18181b] transition-colors">
                   {cat.tamil}
                 </p>
               </div>

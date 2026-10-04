@@ -1,27 +1,51 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surface & Canvas */
-  --color-brand-bg: #EBF7EE;       /* Soft pale sage green canvas */
-  --color-brand-cream: #FAF6EB;    /* Warm linen & card surface */
-  --color-brand-card: #FFFFFF;     /* Pure white for product cards */
+  /* Typography Families (Tailwind v4 Token Mapping) */
+  --font-sans: "General Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Satoshi", "General Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 
-  /* Text & Contrast */
-  --color-brand-dark: #1B2E1E;     /* Deep forest green for headings and primary buttons */
-  --color-brand-green: #2F6B38;    /* Fresh leaf green accent */
-  --color-brand-subtext: #4A5D4E;  /* Balanced body copy */
-  --color-brand-muted: #8A9C8E;    /* Subtle placeholder / metadata text */
+  /* Surface & Canvas Tokens */
+  --color-brand-bg: #EBF7EE;
+  --color-brand-cream: #FAF6EB;
+  --color-brand-card: #FFFFFF;
+
+  /* Text & Contrast Tokens */
+  --color-brand-dark: #1B2E1E;
+  --color-brand-green: #2F6B38;
+  --color-brand-subtext: #4A5D4E;
+  --color-brand-muted: #8A9C8E;
 
   /* Borders & Dividers */
-  --color-brand-border: #DDECE1;   /* Delicate divider line */
-  --color-brand-border-dark: #2A402E; /* Darker outline for pills/buttons */
+  --color-brand-border: #DDECE1;
+  --color-brand-border-dark: #2A402E;
 }
 
 @layer base {
+  html,
   body {
-    background-color: var(--color-brand-bg);
-    color: var(--color-brand-dark);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Structural headings use Satoshi */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+  }
+
+  /* Currency, numeric badges, and tracking codes use JetBrains Mono */
+  .font-mono,
+  table td:first-child,
+  input[type="number"] {
+    font-family: var(--font-mono);
   }
 }
