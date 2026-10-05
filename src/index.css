@@ -48,4 +48,22 @@
   input[type="number"] {
     font-family: var(--font-mono);
   }
+@keyframes trustMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-trust-marquee {
+  display: flex;
+  width: max-content;
+  animation: trustMarquee 32s linear infinite;
+}
+
+.animate-trust-marquee:hover {
+  animation-play-state: paused;
+}
 }

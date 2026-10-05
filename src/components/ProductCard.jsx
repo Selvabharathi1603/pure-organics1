@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { Plus, Check, Star, AlertCircle } from "lucide-react";
+import { ShoppingBag, Check, Star, AlertCircle } from "lucide-react";
 import { useStore } from "../context/storecontext";
 
 export default function ProductCard({ product }) {
   const { addToCart } = useStore();
   const [added, setAdded] = useState(false);
+
+  // Safety fallback so the UI never crashes or renders blank
+  if (!product) return null;
 
   const isOutOfStock = product.inStock === false;
 
@@ -12,89 +15,107 @@ export default function ProductCard({ product }) {
     if (isOutOfStock) return;
     addToCart(product);
     setAdded(true);
-    setTimeout(() => setAdded(false), 1200);
+    setTimeout(() => setAdded(false), 1600);
   };
 
   return (
-    <div className="group relative flex flex-col bg-white rounded-3xl p-3.5 border border-[#e8e2d5] hover:border-[#2e7d4d] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_32px_rgba(46,125,77,0.12)] transition-all duration-300">
+    <div className="group relative flex flex-col bg-white rounded-2xl p-4 border border-stone-200 hover:border-[#D97706] shadow-xs hover:shadow-md transition-all duration-200 font-sans text-left">
       {/* Product Image Frame */}
-      <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#faf7f2]">
+      <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-stone-100 border border-stone-100 flex items-center justify-center">
         <img
-          src={product.image}
-          alt={product.name}
+          src={product.image || "/placeholder-oil.png"}
+          alt={product.name || "Pantry Item"}
           loading="lazy"
-          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
-            isOutOfStock ? "grayscale opacity-60" : "group-hover:scale-105"
+          className={`w-full h-full object-contain p-3 transition-transform duration-300 ${
+            isOutOfStock ? "grayscale opacity-50" : "group-hover:scale-105"
           }`}
         />
 
-        {/* Category Pill */}
-        <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-md text-[#1b3b27] text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full border border-[#dce7df] shadow-xs">
-          {product.category}
-        </span>
+        {/* Category Badge */}
+        {product.category && (
+          <span className="absolute top-2.5 left-2.5 bg-white/95 text-stone-900 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-stone-200 shadow-2xs">
+            {product.category}
+          </span>
+        )}
 
-        {/* Out of Stock Overlay Ribbon */}
+        {/* Out of Stock Label */}
         {isOutOfStock && (
-          <div className="absolute inset-0 bg-[#162a1e]/40 flex items-center justify-center">
-            <span className="px-3.5 py-1.5 rounded-full bg-rose-600 text-white font-bold text-xs uppercase tracking-wider shadow-lg">
+          <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-2xs flex items-center justify-center">
+            <span className="px-3 py-1 rounded-full bg-stone-900 text-white font-bold text-xs uppercase tracking-wider shadow-md">
               Out of Stock
             </span>
           </div>
         )}
 
-        {/* Rating */}
+        {/* Customer Rating */}
         {product.rating && !isOutOfStock && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/95 backdrop-blur-md text-[#162a1e] text-[11px] font-medium px-2.5 py-0.5 rounded-full border border-[#dce7df] shadow-xs">
-            <Star className="w-3 h-3 text-[#c58f38] fill-[#c58f38]" />
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-white/95 text-stone-900 text-[11px] font-bold px-2 py-0.5 rounded-md border border-stone-200 shadow-2xs">
+            <Star className="w-3 h-3 text-[#D97706] fill-[#D97706]" />
             <span>{product.rating}</span>
           </div>
         )}
       </div>
 
-      {/* Product Details */}
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex-1">
-          <span className="text-[11px] font-semibold text-[#2e7d4d] tracking-wider uppercase font-mono">
-            {product.unit}
+      {/* Product Information */}
+      <div className="pt-3.5 flex flex-col flex-1 justify-between space-y-3">
+        <div className="space-y-1">
+          <span className="text-[11px] font-mono font-bold text-[#D97706] uppercase tracking-wider block">
+            {product.unit || "Pack"}
           </span>
-          <h3 className="font-serif text-lg font-bold text-[#162a1e] leading-snug mt-0.5 line-clamp-1 group-hover:text-[#2e7d4d] transition-colors">
+          <h3 className="text-base font-bold text-stone-900 leading-snug line-clamp-1 group-hover:text-[#D97706] transition-colors">
             {product.name}
           </h3>
-          <p className="mt-1.5 text-xs text-[#526659] line-clamp-2 leading-relaxed">
-            {product.description}
+          <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+            {product.description || "Freshly packed direct from the mill."}
           </p>
         </div>
 
-        {/* Price & Cart Button */}
-        <div className="mt-5 pt-3 border-t border-[#f0eae0] flex items-center justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#829688] block">
-              Price
-            </span>
-            <span className="text-xl font-bold text-[#162a1e] tracking-tight font-serif">
-              ₹{product.price}
-            </span>
+        {/* Price & Add to Cart Button */}
+        <div className="pt-2 border-t border-stone-100 space-y-2.5">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <span className="text-[10px] uppercase font-mono font-bold text-stone-400 block">
+                Price
+              </span>
+              <span className="text-lg font-black text-stone-900">
+                ₹{product.price}
+              </span>
+            </div>
+            {product.originalPrice && (
+              <span className="text-xs text-stone-400 line-through">
+                ₹{product.originalPrice}
+              </span>
+            )}
           </div>
 
+          {/* Full-Width Action Button */}
           <button
             type="button"
             disabled={isOutOfStock}
             onClick={handleAdd}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm active:scale-90 cursor-pointer ${
+            className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
               isOutOfStock
                 ? "bg-stone-200 text-stone-400 cursor-not-allowed"
                 : added
-                  ? "bg-[#2e7d4d] text-white rotate-0 shadow-[0_0_12px_rgba(46,125,77,0.4)]"
-                  : "bg-[#edf5ef] hover:bg-[#1b3b27] text-[#1b3b27] hover:text-white hover:rotate-90 border border-[#cbe1d2] hover:border-[#1b3b27]"
+                  ? "bg-[#D97706] text-black shadow-xs font-extrabold"
+                  : "bg-stone-900 hover:bg-[#D97706] text-white hover:text-black shadow-xs"
             }`}
-            aria-label={isOutOfStock ? "Out of stock" : "Add to bag"}
           >
             {isOutOfStock ? (
-              <AlertCircle className="w-4 h-4" />
+              <>
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Out of Stock</span>
+              </>
             ) : added ? (
-              <Check className="w-4 h-4 stroke-[3]" />
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Added to Cart</span>
+              </>
             ) : (
-              <Plus className="w-4 h-4 stroke-[2]" />
+              <>
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Add to Cart</span>
+              </>
             )}
           </button>
         </div>

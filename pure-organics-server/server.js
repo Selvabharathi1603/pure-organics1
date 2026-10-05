@@ -10,32 +10,19 @@ app.use(cors());
 app.use(express.json());
 
 // =================================================================
-// 1. TIDB CLOUD DATABASE CONNECTION POOL
+// LOCAL MYSQL CONNECTION POOL (Reads DB_* from .env)
 // =================================================================
-// Works with DATABASE_URL or individual TiDB host/user/password variables
-const pool = mysql.createPool(
-  process.env.DATABASE_URL
-    ? {
-        uri: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: true },
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-      }
-    : {
-        host: process.env.TIDB_HOST || "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-        port: Number(process.env.TIDB_PORT) || 4000,
-        user: process.env.TIDB_USER || "root",
-        password: process.env.TIDB_PASSWORD || "",
-        database: process.env.TIDB_DATABASE || "pure_organics",
-        ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-      }
-);
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "pure_organics",
+  port: Number(process.env.DB_PORT) || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
-// Helper function for clean async/await SQL execution
 async function dbQuery(sql, params = []) {
   const [rows] = await pool.execute(sql, params);
   return rows;
@@ -45,216 +32,90 @@ async function dbQuery(sql, params = []) {
 pool
   .getConnection()
   .then((conn) => {
-    console.log("Connected to TiDB Cloud (pure_organics) successfully.");
+    console.log(`Connected to local MySQL database [${process.env.DB_NAME || "pure_organics"}] successfully.`);
     conn.release();
   })
   .catch((err) => {
-    console.error("TiDB Cloud Connection Error:", err.message);
+    console.error("Local MySQL Connection Error:", err.message);
   });
 
 // =================================================================
-// 2. SHIPROCKET AUTOMATED COURIER INTEGRATION (FREE API)
+// 1. PRODUCTS ENDPOINTS
 // =================================================================
-let shiprocketToken = null;
-let tokenExpiry = null;
-
-async function getShiprocketToken() {
-  if (shiprocketToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return shiprocketToken;
-  }
-
-  const email = process.env.SHIPROCKET_EMAIL;
-  const password = process.env.SHIPROCKET_PASSWORD;
-
-  if (!email || !password) {
-    console.log("Shiprocket credentials not found in environment. Using fallback AWB generator.");
-    return null;
-  }
-
+app.get("/api/products", async (req, res) => {
   try {
-    const res = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-    if (data && data.token) {
-      shiprocketToken = data.token;
-      tokenExpiry = Date.now() + 9 * 24 * 60 * 60 * 1000; // 9 days cache
-      return shiprocketToken;
-    } else {
-      console.error("Shiprocket Login Failed:", data);
-    }
+    const rows = await dbQuery("SELECT * FROM products ORDER BY id ASC");
+    console.log(`[Products API] Returned ${rows.length} products.`);
+    res.json(rows);
   } catch (err) {
-    console.error("Shiprocket Request Error:", err.message);
-  }
-  return null;
-}
-
-// Assign Delivery Channel (Shiprocket Automated vs Manual Local Courier)
-app.post("/api/admin/assign-delivery", async (req, res) => {
-  const { orderId, channel, courierName, trackingNumber, shippingCost } = req.body;
-
-  try {
-    if (channel === "auto") {
-      // Flow A: Shiprocket Automated Dispatch
-      await getShiprocketToken();
-      const generatedAwb = "SR" + Math.floor(100000000 + Math.random() * 900000000);
-
-      const sql = `
-        UPDATE orders 
-        SET delivery_channel = 'auto', 
-            courier_name = 'Shiprocket Automated', 
-            tracking_id = ?, 
-            status = 'Shipped',
-            dispatch_note = 'Shiprocket Automated'
-        WHERE id = ? OR tracking_id = ?
-      `;
-      await dbQuery(sql, [generatedAwb, String(orderId), String(orderId)]);
-
-      return res.json({
-        success: true,
-        message: "Shiprocket tracking generated and order marked as Shipped",
-        trackingId: generatedAwb,
-        channel: "auto",
-        courier: "Shiprocket Automated",
-      });
-    } else {
-      // Flow B: Manual Local Courier (ST Courier / Professional / Local Van)
-      const chosenCourier = courierName || "ST Courier";
-      const finalTracking = trackingNumber || "ST-" + Date.now().toString().slice(-6);
-      const cost = Number(shippingCost) || 0;
-      const dispatchNote = `${chosenCourier} - ${finalTracking}`;
-
-      const sql = `
-        UPDATE orders 
-        SET delivery_channel = 'manual', 
-            courier_name = ?, 
-            tracking_id = ?, 
-            status = 'Shipped',
-            shipping_cost = ?,
-            dispatch_note = ?
-        WHERE id = ? OR tracking_id = ?
-      `;
-      await dbQuery(sql, [chosenCourier, finalTracking, cost, dispatchNote, String(orderId), String(orderId)]);
-
-      // Auto-log local courier expense into the Expenses Ledger
-      if (cost > 0) {
-        await dbQuery(
-          `INSERT INTO expenses (title, category, amount, paid_to, expense_date) 
-           VALUES (?, 'Courier & Dispatch', ?, ?, CURRENT_DATE)`,
-          [`Courier fee for order #${orderId}`, cost, chosenCourier]
-        );
-      }
-
-      return res.json({
-        success: true,
-        message: "Manual courier assigned and shipping cost recorded",
-        trackingId: finalTracking,
-        channel: "manual",
-        courier: chosenCourier,
-      });
-    }
-  } catch (err) {
-    console.error("Assign Delivery Route Error:", err);
-    res.status(500).json({ success: false, message: "Database update failed" });
+    console.error("Database query error on /api/products:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// =================================================================
-// 3. EXPENSES LEDGER (COMPARISONS & AUDIT)
-// =================================================================
-app.get("/api/admin/expenses", async (req, res) => {
-  try {
-    const rows = await dbQuery("SELECT * FROM expenses ORDER BY expense_date DESC, id DESC");
-    res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error("Fetch Expenses Error:", err);
-    res.status(500).json({ success: false, message: "Could not fetch expenses" });
-  }
-});
-
-app.post("/api/admin/expenses", async (req, res) => {
-  const { title, category, amount, paidTo, notes, date } = req.body;
+app.post("/api/products", async (req, res) => {
+  const { name, category, price, unit, image, stock_qty } = req.body;
   try {
     const sql = `
-      INSERT INTO expenses (title, category, amount, paid_to, notes, expense_date) 
-      VALUES (?, ?, ?, ?, ?, COALESCE(?, CURRENT_DATE))
+      INSERT INTO products (name, category, price, unit, image, in_stock, stock_qty) 
+      VALUES (?, ?, ?, ?, ?, 1, ?)
     `;
     const result = await dbQuery(sql, [
-      title,
+      name,
       category,
-      Number(amount),
-      paidTo || "General Supplier",
-      notes || "",
-      date || null,
+      Number(price),
+      unit,
+      image || "",
+      stock_qty || 30,
     ]);
     res.json({ success: true, id: result.insertId });
   } catch (err) {
-    console.error("Add Expense Error:", err);
-    res.status(500).json({ success: false, message: "Failed to record expense" });
+    console.error("Create Product Error:", err);
+    res.status(500).json({ success: false, message: "Failed to create product" });
   }
 });
 
-// =================================================================
-// 4. STAFF ROLES & ACCESS CONTROL (ADMIN_USERS)
-// =================================================================
-app.get("/api/admin/staff", async (req, res) => {
-  try {
-    const rows = await dbQuery("SELECT id, name, username, role, phone, active FROM admin_users ORDER BY id ASC");
-    res.json({ success: true, data: rows });
-  } catch (err) {
-    console.error("Fetch Staff Error:", err);
-    res.status(500).json({ success: false, message: "Could not fetch staff" });
-  }
-});
-
-app.post("/api/admin/staff", async (req, res) => {
-  const { name, username, password, role, phone } = req.body;
-  try {
-    const sql = `
-      INSERT INTO admin_users (name, username, password, role, phone) 
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    const result = await dbQuery(sql, [name, username, password, role || "STORE_MANAGER", phone || ""]);
-    res.json({ success: true, id: result.insertId });
-  } catch (err) {
-    console.error("Create Staff Error:", err);
-    res.status(500).json({ success: false, message: "Username already exists or invalid data" });
-  }
-});
-
-app.put("/api/admin/staff/:id", async (req, res) => {
+app.patch("/api/products/:id/stock", async (req, res) => {
   const { id } = req.params;
-  const { name, username, password, role, phone } = req.body;
+  const { in_stock } = req.body;
   try {
-    if (password && password.trim() !== "") {
-      const sql = `UPDATE admin_users SET name = ?, username = ?, password = ?, role = ?, phone = ? WHERE id = ?`;
-      await dbQuery(sql, [name, username, password, role, phone, id]);
-    } else {
-      const sql = `UPDATE admin_users SET name = ?, username = ?, role = ?, phone = ? WHERE id = ?`;
-      await dbQuery(sql, [name, username, role, phone, id]);
-    }
-    res.json({ success: true, message: "Staff account updated" });
+    await dbQuery("UPDATE products SET in_stock = ? WHERE id = ?", [
+      in_stock ? 1 : 0,
+      id,
+    ]);
+    res.json({ success: true, message: "Stock status updated" });
   } catch (err) {
-    console.error("Update Staff Error:", err);
-    res.status(500).json({ success: false, message: "Failed to update staff" });
-  }
-});
-
-app.delete("/api/admin/staff/:id", async (req, res) => {
-  try {
-    await dbQuery("DELETE FROM admin_users WHERE id = ?", [req.params.id]);
-    res.json({ success: true, message: "Staff account removed" });
-  } catch (err) {
-    console.error("Delete Staff Error:", err);
-    res.status(500).json({ success: false, message: "Failed to delete account" });
+    console.error("Stock update error:", err);
+    res.status(500).json({ success: false });
   }
 });
 
 // =================================================================
-// 5. ORDERS & STATUS CONFIRMATION
+// 2. CATEGORIES & BESTSELLERS (Fixes 404s)
+// =================================================================
+app.get("/api/categories", async (req, res) => {
+  try {
+    const rows = await dbQuery(
+      "SELECT DISTINCT category FROM products WHERE category IS NOT NULL"
+    );
+    const categories = rows.map((r) => r.category);
+    res.json(categories.length > 0 ? categories : ["Oil", "Ghee", "Rice", "Millets", "Breakfast"]);
+  } catch (err) {
+    res.json(["Oil", "Ghee", "Rice", "Millets", "Breakfast"]);
+  }
+});
+
+app.get("/api/hero/bestsellers", async (req, res) => {
+  try {
+    const rows = await dbQuery("SELECT * FROM products LIMIT 4");
+    res.json(rows);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+// =================================================================
+// 3. ORDERS ENDPOINTS
 // =================================================================
 app.get("/api/orders", async (req, res) => {
   try {
@@ -266,122 +127,36 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-app.put("/api/orders/:id/status", async (req, res) => {
-  const { id } = req.params;
-  const { status, dispatchNote } = req.body;
+app.post("/api/orders", async (req, res) => {
+  const { tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note } = req.body;
   try {
     const sql = `
-      UPDATE orders 
-      SET status = ?, dispatch_note = COALESCE(?, dispatch_note) 
-      WHERE id = ? OR tracking_id = ?
+      INSERT INTO orders (tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'Order Placed')
     `;
-    await dbQuery(sql, [status, dispatchNote || null, String(id), String(id)]);
-    res.json({ success: true, message: "Order status updated" });
+    await dbQuery(sql, [tracking_id, customer_name, customer_phone, customer_address, total_amount, dispatch_note]);
+    res.json({ success: true });
   } catch (err) {
-    console.error("Update Order Status Error:", err);
-    res.status(500).json({ success: false, message: "Update failed" });
+    console.error("Place Order Error:", err);
+    res.status(500).json({ success: false });
   }
 });
 
-// =================================================================
-// 6. PRODUCTS & IN-LINE CATALOG EDITING
-// =================================================================
-app.get("/api/products", async (req, res) => {
+// Diagnostics
+app.get("/api/debug/tables", async (req, res) => {
   try {
-    const rows = await dbQuery("SELECT * FROM products ORDER BY id ASC");
-    res.json(rows);
+    const tables = await dbQuery("SHOW TABLES");
+    const columns = await dbQuery("DESCRIBE products");
+    res.json({ tables, columns });
   } catch (err) {
-    console.error("Fetch Products Error:", err);
-    res.status(500).json([]);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/api/products/:id", async (req, res) => {
-  const { id } = req.params;
-  const { name, price, unit, category, in_stock, inStock, stock_qty } = req.body;
-  try {
-    const stockStatus = inStock !== undefined ? (inStock ? 1 : 0) : in_stock !== undefined ? (in_stock ? 1 : 0) : 1;
-    const sql = `
-      UPDATE products 
-      SET name = COALESCE(?, name), 
-          price = COALESCE(?, price), 
-          unit = COALESCE(?, unit), 
-          category = COALESCE(?, category), 
-          in_stock = ?,
-          stock_qty = COALESCE(?, stock_qty)
-      WHERE id = ?
-    `;
-    await dbQuery(sql, [name, price, unit, category, stockStatus, stock_qty, id]);
-    res.json({ success: true, message: "Product updated successfully" });
-  } catch (err) {
-    console.error("Update Product Error:", err);
-    res.status(500).json({ success: false, message: "Could not update product" });
-  }
-});
-
-app.post("/api/products", async (req, res) => {
-  const { name, category, price, unit, image, stock_qty } = req.body;
-  try {
-    const sql = `
-      INSERT INTO products (name, category, price, unit, image, in_stock, stock_qty) 
-      VALUES (?, ?, ?, ?, ?, 1, ?)
-    `;
-    const result = await dbQuery(sql, [name, category, Number(price), unit, image || "", stock_qty || 30]);
-    res.json({ success: true, id: result.insertId });
-  } catch (err) {
-    console.error("Create Product Error:", err);
-    res.status(500).json({ success: false, message: "Failed to create product" });
-  }
-});
-
-app.delete("/api/products/:id", async (req, res) => {
-  try {
-    await dbQuery("DELETE FROM products WHERE id = ?", [req.params.id]);
-    res.json({ success: true, message: "Product deleted" });
-  } catch (err) {
-    console.error("Delete Product Error:", err);
-    res.status(500).json({ success: false, message: "Failed to delete product" });
-  }
-});
-
-// =================================================================
-// 7. STOREFRONT CMS PERSISTENCE (HERO VIDEO, ANNOUNCEMENTS, FOOTER)
-// =================================================================
-app.get("/api/cms/:section", async (req, res) => {
-  try {
-    const rows = await dbQuery("SELECT content FROM cms_sections WHERE section_name = ?", [req.params.section]);
-    if (rows.length > 0) {
-      const content = typeof rows[0].content === "string" ? JSON.parse(rows[0].content) : rows[0].content;
-      return res.json({ success: true, data: content });
-    }
-    res.json({ success: false, message: "Section not found" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-app.post("/api/cms/:section", async (req, res) => {
-  const { content } = req.body;
-  try {
-    const jsonStr = JSON.stringify(content);
-    const sql = `
-      INSERT INTO cms_sections (section_name, content) 
-      VALUES (?, ?)
-      ON DUPLICATE KEY UPDATE content = VALUES(content)
-    `;
-    await dbQuery(sql, [req.params.section, jsonStr]);
-    res.json({ success: true, message: "CMS section saved" });
-  } catch (err) {
-    console.error("Save CMS Error:", err);
-    res.status(500).json({ success: false, message: "Failed to save CMS section" });
-  }
-});
-
-// Server Root Health Check
 app.get("/", (req, res) => {
-  res.send("Pure Organics TiDB Cloud Backend Server Active.");
+  res.send("Pure Organics Local Server Active.");
 });
 
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log(`Backend server running on http://localhost:${PORT}`);
 });
