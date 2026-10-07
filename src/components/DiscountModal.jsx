@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
+import { X, Tag, Check, ArrowRight, Loader2 } from "lucide-react";
 import { useStore } from "../context/storecontext";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
 const BACKUP_HARVEST_IMAGE =
   "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80";
+
+const BASE_URL =
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : CONFIG_URL || "https://pure-organics1.onrender.com";
 
 export default function DiscountModal({
   isOpen: externalIsOpen,
@@ -29,13 +35,13 @@ export default function DiscountModal({
     return () => clearTimeout(timer);
   }, []);
 
-  const badge = cms.badge?.trim() ? cms.badge : "New Harvest Welcome";
+  const badge = cms.badge?.trim() ? cms.badge : "First Order Discount";
   const headline = cms.headline?.trim()
     ? cms.headline
-    : "Unlock ₹100 off on your first order";
+    : "Get ₹100 Off Your First Order";
   const subtext = cms.subtext?.trim()
     ? cms.subtext
-    : "Share your birth date to receive seasonal birthday harvest surprises 🌱";
+    : "Enter your phone number to receive your instant welcome discount code.";
   const rawImage =
     cms.image && cms.image.trim() !== "" ? cms.image : BACKUP_HARVEST_IMAGE;
 
@@ -65,7 +71,7 @@ export default function DiscountModal({
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/leads`, {
+      const response = await fetch(`${BASE_URL}/api/leads`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,10 +91,14 @@ export default function DiscountModal({
       setTimeout(() => {
         setSubmitted(false);
         handleClose();
-      }, 1500);
+      }, 1800);
     } catch (error) {
-      console.error("Lead submission error:", error);
-      alert("Could not save details. Please verify your backend is running!");
+      console.warn("Lead save note:", error);
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        handleClose();
+      }, 1800);
     } finally {
       setLoading(false);
     }
@@ -96,11 +106,11 @@ export default function DiscountModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-dark/50 backdrop-blur-xs font-sans"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans select-none text-stone-900"
       onClick={handleClose}
     >
       <div
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-brand-border"
+        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-stone-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -108,16 +118,16 @@ export default function DiscountModal({
           type="button"
           onClick={handleClose}
           aria-label="Close"
-          className="absolute top-3 right-3 z-30 text-brand-dark hover:text-black text-sm font-bold w-8 h-8 rounded-full bg-white border border-brand-border flex items-center justify-center transition-colors cursor-pointer"
+          className="absolute top-3.5 right-3.5 z-30 text-stone-500 hover:text-stone-950 text-xs font-bold w-8 h-8 rounded-full bg-white/95 border border-stone-200 flex items-center justify-center transition-colors cursor-pointer shadow-xs"
         >
-          ✕
+          <X className="w-4 h-4" />
         </button>
 
-        {/* Left Side: Photo */}
-        <div className="w-full md:w-1/2 bg-brand-bg min-h-[200px] md:min-h-[340px] relative overflow-hidden flex items-center justify-center">
+        {/* Left Side: Image */}
+        <div className="w-full md:w-1/2 bg-stone-100 min-h-[180px] md:min-h-[360px] relative overflow-hidden flex items-center justify-center border-b md:border-b-0 md:border-r border-stone-200">
           <img
             src={displayImage}
-            alt="Organic Harvest Offer"
+            alt="Welcome Offer"
             onError={() => setDisplayImage(BACKUP_HARVEST_IMAGE)}
             className="w-full h-full object-cover absolute inset-0"
           />
@@ -126,53 +136,46 @@ export default function DiscountModal({
         {/* Right Side: Form */}
         <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col justify-center text-center md:text-left bg-white">
           {submitted ? (
-            <div className="py-8 text-center space-y-2">
-              <span className="text-3xl">🌱</span>
-              <h3 className="text-base font-bold text-brand-dark">
-                Welcome to the Family!
+            <div className="py-8 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-[#D97706] flex items-center justify-center mx-auto shadow-xs">
+                <Check className="w-6 h-6 stroke-[3]" />
+              </div>
+              <h3 className="text-lg font-bold text-stone-900">
+                Discount Code Unlocked!
               </h3>
-              <p className="text-xs text-brand-subtext">
-                Use code <strong>HARVEST10</strong> at checkout.
+              <p className="text-xs text-stone-600">
+                Use code{" "}
+                <span className="font-bold text-[#D97706] px-2 py-0.5 bg-amber-50 rounded border border-amber-200">
+                  HARVEST10
+                </span>{" "}
+                at checkout.
               </p>
             </div>
           ) : (
             <>
-              <span className="text-[10px] font-bold text-brand-green uppercase tracking-widest block mb-1">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#D97706] uppercase tracking-wider block mb-1">
+                <Tag className="w-3.5 h-3.5" />
                 {badge}
               </span>
-              <h2 className="text-xl sm:text-2xl font-bold text-brand-dark leading-tight">
+
+              <h2 className="text-xl sm:text-2xl font-bold text-stone-900 leading-tight">
                 {headline}
               </h2>
-              <p className="text-xs text-brand-subtext mt-1">{subtext}</p>
+
+              <p className="text-xs text-stone-600 mt-1.5 leading-relaxed">
+                {subtext}
+              </p>
 
               <form onSubmit={handleSubmit} className="mt-5 space-y-3">
-                <div>
-                  <label
-                    htmlFor="dob"
-                    className="block text-left text-[11px] font-medium text-brand-dark mb-1"
-                  >
-                    Date of Birth
-                  </label>
-                  <input
-                    id="dob"
-                    type="date"
-                    name="dob"
-                    value={formData.dob}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 text-xs border border-brand-border rounded-lg focus:outline-none focus:border-brand-dark text-brand-dark bg-brand-bg"
-                  />
-                </div>
-
-                <div>
+                <div className="text-left">
                   <label
                     htmlFor="phone"
-                    className="block text-left text-[11px] font-medium text-brand-dark mb-1"
+                    className="block text-xs font-bold text-stone-700 mb-1"
                   >
-                    Phone Number
+                    Mobile Number *
                   </label>
-                  <div className="flex rounded-lg border border-brand-border focus-within:border-brand-dark overflow-hidden bg-brand-bg">
-                    <span className="inline-flex items-center px-3 bg-white text-brand-dark text-xs font-medium border-r border-brand-border">
+                  <div className="flex rounded-xl border border-stone-200 focus-within:border-[#D97706] overflow-hidden bg-stone-50">
+                    <span className="inline-flex items-center px-3 bg-stone-100 text-stone-700 text-xs font-bold border-r border-stone-200">
                       +91
                     </span>
                     <input
@@ -185,17 +188,44 @@ export default function DiscountModal({
                       value={formData.phone}
                       onChange={handleChange}
                       required
-                      className="w-full px-3 py-2 text-xs focus:outline-none text-brand-dark bg-transparent"
+                      className="w-full px-3 py-2.5 text-xs text-stone-900 bg-transparent focus:outline-none"
                     />
                   </div>
+                </div>
+
+                <div className="text-left">
+                  <label
+                    htmlFor="dob"
+                    className="block text-xs font-bold text-stone-700 mb-1"
+                  >
+                    Date of Birth (Optional)
+                  </label>
+                  <input
+                    id="dob"
+                    type="date"
+                    name="dob"
+                    value={formData.dob}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2.5 text-xs border border-stone-200 rounded-xl focus:outline-none focus:border-[#D97706] text-stone-900 bg-stone-50"
+                  />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 px-4 bg-brand-dark hover:bg-brand-green text-white text-xs font-bold rounded-full tracking-wider uppercase transition-colors shadow-sm cursor-pointer disabled:opacity-60 mt-2"
+                  className="w-full py-3 px-4 bg-stone-900 hover:bg-[#D97706] hover:text-black text-white text-xs font-bold rounded-xl tracking-wider uppercase transition-all shadow-xs cursor-pointer disabled:opacity-60 mt-2 flex items-center justify-center gap-2 active:scale-98"
                 >
-                  {loading ? "Saving..." : "Claim Harvest Discount"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Applying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Claim ₹100 Discount</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </button>
               </form>
             </>

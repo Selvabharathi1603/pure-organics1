@@ -357,7 +357,7 @@ export default function HeroSection({ onAddToCart }) {
                     onClick={handleAdd}
                     className={`w-full sm:w-72 py-3 rounded-full font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xl cursor-pointer ${
                       added
-                        ? "bg-emerald-500 text-stone-950 scale-102"
+                        ? "bg-amber-400 text-stone-950 scale-102"
                         : "bg-white hover:bg-amber-400 text-stone-950 active:scale-98"
                     }`}
                   >

@@ -3,14 +3,10 @@ import {
   MessageSquare,
   X,
   Send,
-  Sparkles,
   Loader2,
-  User,
   ShoppingBag,
   Check,
-  ChevronRight,
   RotateCcw,
-  Volume2,
 } from "lucide-react";
 import { useStore } from "../context/storecontext";
 
@@ -21,7 +17,7 @@ export default function StorefrontChatbot() {
     {
       id: 1,
       sender: "bot",
-      text: "Vanakkam! 🌿 I am **Nila**, your Pure Organics Sommelier. Ask me anything about native heritage grains, chekku oils, or gut-friendly meal planning.",
+      text: "Vanakkam! I am Nila, your pantry assistant. Ask me anything about cold-pressed oils, unpolished rice, or natural sweeteners.",
       suggestedProducts: [],
     },
   ]);
@@ -30,7 +26,10 @@ export default function StorefrontChatbot() {
   const [addedItemMap, setAddedItemMap] = useState({});
   const messagesEndRef = useRef(null);
 
-  const API_BASE_URL = "https://pure-organics1.onrender.com";
+  const API_BASE_URL =
+    typeof window !== "undefined" && window.location.hostname === "localhost"
+      ? "http://localhost:5000"
+      : "https://pure-organics1.onrender.com";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,14 +54,12 @@ export default function StorefrontChatbot() {
     const userText = inputMsg.trim();
     const userMessage = { id: Date.now(), sender: "user", text: userText };
 
-    // Update conversation state
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInputMsg("");
     setLoading(true);
 
     try {
-      // 2026 Trend: Format previous turns to provide conversational memory
       const conversationHistory = updatedMessages.slice(-6).map((m) => ({
         role: m.sender === "user" ? "user" : "assistant",
         content: m.text,
@@ -89,7 +86,6 @@ export default function StorefrontChatbot() {
 
       const data = await response.json();
 
-      // Match recommended products from live store context
       const matchedProducts = (data.recommendedProductIds || [])
         .map((id) => products.find((p) => String(p.id) === String(id)))
         .filter(Boolean);
@@ -99,7 +95,7 @@ export default function StorefrontChatbot() {
         sender: "bot",
         text:
           data.reply ||
-          "Let me know how else I can assist your wellness journey!",
+          "Feel free to ask if you need details on any of our mill products!",
         suggestedProducts: matchedProducts,
       };
 
@@ -111,7 +107,7 @@ export default function StorefrontChatbot() {
         {
           id: Date.now() + 1,
           sender: "bot",
-          text: "I am having a momentary connection glitch with the farm database. Feel free to re-ask or browse our catalog directly!",
+          text: "I am having trouble connecting to the catalog server right now. Please browse our shop page directly or try again shortly.",
           suggestedProducts: [],
         },
       ]);
@@ -125,7 +121,7 @@ export default function StorefrontChatbot() {
       {
         id: Date.now(),
         sender: "bot",
-        text: "Conversation refreshed. How may I guide your native pantry selections today?",
+        text: "Conversation refreshed. How can I help you with your groceries today?",
         suggestedProducts: [],
       },
     ]);
@@ -133,58 +129,55 @@ export default function StorefrontChatbot() {
 
   return (
     <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-[9999] select-none font-sans">
-      {/* 2026 Floating Smart Widget Trigger */}
+      {/* Floating Launcher Button */}
       {!isOpen && (
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-3 px-5 py-3.5 bg-gradient-to-r from-[#1b3b27] via-[#244f34] to-[#1b3b27] text-white rounded-full shadow-[0_12px_32px_rgba(27,59,39,0.35)] hover:shadow-[0_16px_40px_rgba(27,59,39,0.45)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-emerald-500/20"
-          aria-label="Open Farm Assistant"
+          className="group relative flex items-center gap-3 px-5 py-3.5 bg-stone-900 text-white rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.25)] hover:bg-[#D97706] hover:text-black transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-stone-800"
+          aria-label="Open Store Assistant"
         >
           <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-400/40">
-              <Sparkles className="w-4 h-4 text-[#e6b95c] animate-pulse" />
+            <div className="w-8 h-8 rounded-full bg-stone-800 group-hover:bg-black/20 flex items-center justify-center border border-stone-700">
+              <MessageSquare className="w-4 h-4 text-[#D97706] group-hover:text-black" />
             </div>
             <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D97706] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#D97706]"></span>
             </span>
           </div>
 
           <div className="text-left">
-            <span className="text-[10px] uppercase font-mono tracking-widest text-emerald-300/90 block leading-none">
-              AI Sommelier
+            <span className="text-[10px] uppercase font-mono tracking-widest text-stone-400 group-hover:text-black/80 block leading-none font-bold">
+              Store Help
             </span>
-            <span className="text-xs font-bold tracking-tight text-white block mt-0.5">
+            <span className="text-xs font-bold tracking-tight block mt-0.5">
               Ask Nila
             </span>
           </div>
         </button>
       )}
 
-      {/* 2026 Chat Panel */}
+      {/* Chat Window */}
       {isOpen && (
-        <div className="w-[calc(100vw-2.5rem)] sm:w-[410px] h-[580px] max-h-[85vh] bg-white/95 backdrop-blur-md rounded-3xl border border-[#e4ded5] shadow-[0_24px_60px_rgba(20,40,28,0.22)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-[calc(100vw-2.5rem)] sm:w-[410px] h-[580px] max-h-[85vh] bg-white rounded-3xl border border-stone-300 shadow-[0_24px_60px_rgba(0,0,0,0.22)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           {/* Header */}
-          <div className="bg-[#173322] text-white px-5 py-4 flex items-center justify-between border-b border-emerald-900/60">
+          <div className="bg-stone-950 text-white px-5 py-4 flex items-center justify-between border-b border-stone-800">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 flex items-center justify-center border border-emerald-400/30 shadow-inner">
-                  <Sparkles className="w-4 h-4 text-[#ecd18b]" />
+                <div className="w-9 h-9 rounded-2xl bg-stone-800 flex items-center justify-center border border-stone-700 shadow-inner">
+                  <MessageSquare className="w-4 h-4 text-[#D97706]" />
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#173322]"></span>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#D97706] ring-2 ring-stone-950"></span>
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold tracking-tight">
-                    Nila • Farm Sommelier
+                  <h3 className="text-sm font-bold tracking-tight text-white">
+                    Nila • Pantry Assistant
                   </h3>
-                  <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 text-[9px] font-mono rounded border border-emerald-500/30 font-semibold">
-                    v2.6
-                  </span>
                 </div>
-                <p className="text-[10px] text-emerald-200/80 font-mono">
-                  100% Native Wood-Pressed & Heirloom Grains
+                <p className="text-[10px] text-stone-400 font-mono">
+                  Cold-Pressed Oils &amp; Whole Staples
                 </p>
               </div>
             </div>
@@ -194,14 +187,14 @@ export default function StorefrontChatbot() {
                 type="button"
                 onClick={clearChat}
                 title="Restart chat"
-                className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -209,7 +202,7 @@ export default function StorefrontChatbot() {
           </div>
 
           {/* Conversation Feed */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#faf8f5]/80">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-stone-50">
             {messages.map((m) => (
               <div
                 key={m.id}
@@ -223,46 +216,46 @@ export default function StorefrontChatbot() {
                   }`}
                 >
                   {m.sender === "bot" && (
-                    <div className="w-6 h-6 rounded-lg bg-[#edf5ef] border border-[#cbe1d2] flex items-center justify-center text-[#1b3b27] shrink-0 mt-0.5">
-                      <Sparkles className="w-3 h-3 text-[#2e7d4d]" />
+                    <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-[#D97706] shrink-0 mt-0.5">
+                      <MessageSquare className="w-3 h-3" />
                     </div>
                   )}
 
                   <div
                     className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
                       m.sender === "user"
-                        ? "bg-[#1b3b27] text-white rounded-tr-xs shadow-xs font-medium"
-                        : "bg-white text-slate-800 border border-[#e8e2d8] rounded-tl-xs shadow-xs"
+                        ? "bg-stone-900 text-white rounded-tr-xs shadow-xs font-medium"
+                        : "bg-white text-stone-900 border border-stone-200 rounded-tl-xs shadow-xs"
                     }`}
                   >
                     <p className="whitespace-pre-line">{m.text}</p>
                   </div>
                 </div>
 
-                {/* 2026 Trend: In-Chat Product Cards */}
+                {/* In-Chat Product Recommendation Cards */}
                 {m.suggestedProducts && m.suggestedProducts.length > 0 && (
                   <div className="mt-2.5 w-full pl-8 space-y-2">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#2e7d4d] block">
-                      Recommended Native Harvest
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#D97706] block">
+                      Recommended From Store
                     </span>
                     <div className="grid grid-cols-1 gap-2">
                       {m.suggestedProducts.map((prod) => (
                         <div
                           key={prod.id}
-                          className="p-2.5 bg-white rounded-xl border border-emerald-100/80 shadow-xs flex items-center justify-between gap-3 hover:border-emerald-300 transition-colors"
+                          className="p-2.5 bg-white rounded-xl border border-stone-200 shadow-xs flex items-center justify-between gap-3 hover:border-[#D97706] transition-colors"
                         >
                           <div className="min-w-0 flex-1">
-                            <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 font-semibold inline-block mb-0.5">
+                            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-amber-50 text-[#D97706] font-bold inline-block mb-0.5 border border-amber-200">
                               {prod.category}
                             </span>
-                            <h4 className="text-xs font-bold text-slate-900 truncate">
+                            <h4 className="text-xs font-bold text-stone-900 truncate">
                               {prod.name}
                             </h4>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-xs font-extrabold text-[#1b3b27]">
+                              <span className="text-xs font-extrabold text-stone-900 font-mono">
                                 ₹{prod.price}
                               </span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-[10px] text-stone-400 font-mono">
                                 • {prod.unit || "1 Unit"}
                               </span>
                             </div>
@@ -273,13 +266,14 @@ export default function StorefrontChatbot() {
                             onClick={() => handleAddToCartFromBot(prod)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                               addedItemMap[prod.id]
-                                ? "bg-emerald-600 text-white"
-                                : "bg-[#1b3b27] hover:bg-[#255236] text-white shadow-2xs active:scale-95"
+                                ? "bg-[#D97706] text-black font-extrabold"
+                                : "bg-stone-900 hover:bg-[#D97706] hover:text-black text-white shadow-2xs active:scale-95"
                             }`}
                           >
                             {addedItemMap[prod.id] ? (
                               <>
-                                <Check className="w-3.5 h-3.5" /> Added
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />{" "}
+                                Added
                               </>
                             ) : (
                               <>
@@ -296,23 +290,23 @@ export default function StorefrontChatbot() {
             ))}
 
             {loading && (
-              <div className="flex gap-2.5 items-center text-slate-500 text-xs pl-8">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2e7d4d]" />
-                <span className="italic text-[11px] font-mono text-emerald-800">
-                  Checking current harvest & recipes...
+              <div className="flex gap-2.5 items-center text-stone-500 text-xs pl-8">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#D97706]" />
+                <span className="text-[11px] font-mono text-stone-600">
+                  Checking catalog details...
                 </span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 2026 Trend: Smart Prompt Suggestions */}
-          <div className="px-3.5 py-2 bg-white/80 border-t border-[#e8e2d8] flex gap-1.5 overflow-x-auto scrollbar-none">
+          {/* Prompt Suggestions */}
+          <div className="px-3.5 py-2 bg-white border-t border-stone-200 flex gap-1.5 overflow-x-auto scrollbar-none">
             {[
               "Best oil for daily cooking?",
-              "Karuppu Kavuni benefits?",
-              "Recommend diabetic-friendly rice",
-              "Which oil for hair growth?",
+              "Karuppu Kavuni rice details?",
+              "Which oil is best for deep frying?",
+              "Do you have raw forest honey?",
             ].map((prompt) => (
               <button
                 type="button"
@@ -320,29 +314,29 @@ export default function StorefrontChatbot() {
                 onClick={() => {
                   setInputMsg(prompt);
                 }}
-                className="px-2.5 py-1 bg-[#faf7f2] hover:bg-[#edf5ef] border border-[#e8e2d8] text-[10px] font-medium text-slate-600 rounded-lg whitespace-nowrap cursor-pointer transition-colors"
+                className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 border border-stone-200 text-[10px] font-semibold text-stone-700 rounded-lg whitespace-nowrap cursor-pointer transition-colors"
               >
                 {prompt}
               </button>
             ))}
           </div>
 
-          {/* Footer Input Form */}
+          {/* Input Form */}
           <form
             onSubmit={handleSend}
-            className="p-3 bg-white border-t border-[#e8e2d8] flex items-center gap-2"
+            className="p-3 bg-white border-t border-stone-200 flex items-center gap-2"
           >
             <input
               type="text"
               value={inputMsg}
               onChange={(e) => setInputMsg(e.target.value)}
-              placeholder="Ask about native staples, cold-pressed oils..."
-              className="flex-1 px-3.5 py-2.5 bg-[#faf7f2] border border-[#dcd4c7] rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#2e7d4d] placeholder-slate-400"
+              placeholder="Ask about oils, rice, or millets..."
+              className="flex-1 px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:border-[#D97706] placeholder-stone-400"
             />
             <button
               type="submit"
               disabled={loading || !inputMsg.trim()}
-              className={`p-2.5 rounded-xl bg-[#1b3b27] text-white hover:bg-[#255236] transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl bg-stone-900 text-white hover:bg-[#D97706] hover:text-black transition-all cursor-pointer ${
                 loading || !inputMsg.trim()
                   ? "opacity-40 cursor-not-allowed"
                   : ""

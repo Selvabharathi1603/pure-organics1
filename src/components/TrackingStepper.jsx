@@ -6,14 +6,14 @@ export default function TrackingStepper({ currentStatus = "Placed" }) {
   const currentStepIndex = steps.indexOf(currentStatus);
 
   return (
-    <div className="w-full py-6">
-      <div className="relative flex items-center justify-between max-w-xl mx-auto">
-        {/* Track Line */}
-        <div className="absolute left-6 right-6 top-4 h-1 bg-[#e8e2d5] -z-0" />
+    <div className="w-full py-5 font-sans select-none">
+      <div className="relative flex items-center justify-between max-w-xl mx-auto px-4">
+        {/* Background track line */}
+        <div className="absolute left-8 right-8 top-4 h-1 bg-stone-200 z-0" />
 
-        {/* Green Progress Line */}
+        {/* Warm amber active progress line - NO GREEN */}
         <div
-          className="absolute left-6 top-4 h-1 bg-[#2e7d4d] transition-all duration-500 ease-in-out -z-0"
+          className="absolute left-8 top-4 h-1 bg-[#D97706] transition-all duration-500 ease-in-out z-0"
           style={{
             width: `${Math.max(
               0,
@@ -32,21 +32,21 @@ export default function TrackingStepper({ currentStatus = "Placed" }) {
               className="flex flex-col items-center relative z-10"
             >
               <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ring-4 ring-[#faf7f2] ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold font-mono transition-all duration-300 ring-4 ring-white ${
                   isDone
-                    ? "bg-[#1b3b27] text-white shadow-sm"
-                    : "bg-white text-[#8e9f93] border border-[#dcd4c7]"
+                    ? "bg-[#D97706] text-black shadow-xs font-extrabold"
+                    : "bg-white text-stone-400 border border-stone-300"
                 }`}
               >
                 {isDone ? <Check className="w-4 h-4 stroke-[3]" /> : idx + 1}
               </div>
               <span
-                className={`mt-2 text-xs tracking-tight ${
+                className={`mt-2 text-xs font-medium tracking-tight ${
                   isCurrent
-                    ? "text-[#1b3b27] font-bold"
+                    ? "text-stone-900 font-bold"
                     : isDone
-                      ? "text-[#2e7d4d] font-semibold"
-                      : "text-[#8e9f93]"
+                      ? "text-[#D97706] font-semibold"
+                      : "text-stone-400"
                 }`}
               >
                 {step}

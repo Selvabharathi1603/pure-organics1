@@ -1,37 +1,41 @@
 @import "tailwindcss";
 
 @theme {
-  /* Typography Families (Tailwind v4 Token Mapping) */
-  --font-sans: "General Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: "Satoshi", "General Sans", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* Standard Industry-Grade E-Commerce Typography */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* Surface & Canvas Tokens */
-  --color-brand-bg: #EBF7EE;
-  --color-brand-cream: #FAF6EB;
-  --color-brand-card: #FFFFFF;
+  /* Surface & Canvas Tokens (Strict Stone & Amber E-Commerce Palette) */
+  --color-brand-bg: #FAFAF9;      /* Tailwind stone-50 (Eliminated green #EBF7EE) */
+  --color-brand-cream: #FFFFFF;   /* Pure white card surface */
+  --color-brand-card: #FFFFFF;    /* Pure white */
 
   /* Text & Contrast Tokens */
-  --color-brand-dark: #1B2E1E;
-  --color-brand-green: #2F6B38;
-  --color-brand-subtext: #4A5D4E;
-  --color-brand-muted: #8A9C8E;
+  --color-brand-dark: #1C1917;    /* Tailwind stone-900 */
+  --color-brand-green: #D97706;   /* Re-mapped to Pure Amber brand primary */
+  --color-brand-subtext: #57534E; /* Tailwind stone-600 */
+  --color-brand-muted: #A8A29E;   /* Tailwind stone-400 */
 
   /* Borders & Dividers */
-  --color-brand-border: #DDECE1;
-  --color-brand-border-dark: #2A402E;
+  --color-brand-border: #E7E5E4;  /* Tailwind stone-200 */
+  --color-brand-border-dark: #292524; /* Tailwind stone-800 */
 }
 
 @layer base {
   html,
   body {
     font-family: var(--font-sans);
+    background-color: #FAFAF9;
+    color: #1C1917;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    margin: 0;
+    padding: 0;
   }
 
-  /* Structural headings use Satoshi */
+  /* Structural headings use standard e-commerce weight hierarchy */
   h1,
   h2,
   h3,
@@ -39,15 +43,19 @@
   h5,
   h6 {
     font-family: var(--font-display);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
+    font-weight: 700;
   }
 
-  /* Currency, numeric badges, and tracking codes use JetBrains Mono */
+  /* Currency, numeric badges, and tracking codes use clear monospace numbers */
   .font-mono,
   table td:first-child,
   input[type="number"] {
     font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
+}
+
 @keyframes trustMarquee {
   0% {
     transform: translateX(0);
@@ -65,5 +73,4 @@
 
 .animate-trust-marquee:hover {
   animation-play-state: paused;
-}
 }

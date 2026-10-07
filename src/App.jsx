@@ -14,26 +14,29 @@ import Shop from "./pages/client/Shop";
 import Cart from "./pages/client/Cart";
 import TrackOrder from "./pages/client/Trackorder";
 import AdminLogin from "./pages/Admin/AdminLogin";
+
 export default function App() {
   return (
     <StoreProvider>
-      <Router>
-        <Routes>
-          {/* Client Public Routes */}
-          <Route element={<ClientLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/track" element={<TrackOrder />} />
-          </Route>
+      <div className="min-h-screen bg-stone-50 text-stone-900 antialiased font-sans selection:bg-amber-100 selection:text-amber-900">
+        <Router>
+          <Routes>
+            {/* Client Public Routes */}
+            <Route element={<ClientLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/shop" element={<Shop />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/track" element={<TrackOrder />} />
+            </Route>
 
-          {/* Admin Protected Portal */}
-          <Route path="/admin" element={<AdminLogin />} />
+            {/* Admin Protected Portal */}
+            <Route path="/admin" element={<AdminLogin />} />
 
-          {/* Fallback - Only redirect non-admin routes */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+            {/* Fallback - Redirect non-matching routes to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </div>
     </StoreProvider>
   );
 }
