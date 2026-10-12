@@ -155,7 +155,7 @@ const INITIAL_ORDERS = [
 ];
 
 export const StoreProvider = ({ children }) => {
-  // 1. ADMIN AUTHENTICATION
+  // 1. admin authentication
   const [currentAdmin, setCurrentAdmin] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_admin_user");
@@ -236,7 +236,7 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_admin_user");
   };
 
-  // 2. PAYMENT GATEWAY & COD CONTROL
+  // 2. payment gateway & cod control
   const [isCodEnabled, setIsCodEnabled] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_organics_cod_status");
@@ -261,7 +261,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 3. CUSTOMER MOBILE OTP AUTHENTICATION & SESSION
+  // 3. customer mobile otp authentication & session
   const [customerSession, setCustomerSession] = useState(() => {
     try {
       const saved = localStorage.getItem("po_customer_session");
@@ -319,7 +319,7 @@ export const StoreProvider = ({ children }) => {
     } catch {}
   };
 
-  // 4. CART DRAWER & PERSISTENCE
+  // 4. cart drawer & persistence
   const [isCartOpen, setIsCartOpen] = useState(false);
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
@@ -377,7 +377,7 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_cart");
   };
 
-  // 5. PRODUCTS CATALOG
+  // 5. products catalog
   const [products, setProducts] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_products");
@@ -524,7 +524,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 6. ORDERS & LOGISTICS
+  // 6. orders & logistics
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_orders");
@@ -648,7 +648,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 7. DYNAMIC CMS & ANNOUNCEMENTS
+  // 7. dynamic cms & announcements
   const [heroSlides, setHeroSlides] = useState([
     {
       mode: "photo",

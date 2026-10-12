@@ -155,7 +155,6 @@ export default function Navbar() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
 
-  // Mega Menu states
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [activeDept, setActiveDept] = useState(DEPARTMENTS[0]);
   const [mobileExpandedCat, setMobileExpandedCat] = useState(null);
@@ -174,9 +173,7 @@ export default function Navbar() {
     <>
       <nav className="sticky top-0 z-40 w-full bg-white border-b border-stone-200">
         <div className="w-full px-3 xs:px-4 sm:px-6 lg:px-10 py-3 sm:py-3.5 flex items-center justify-between relative max-w-7xl mx-auto">
-          {/* =========================================================================
-              LEFT ZONE: NAVIGATION LINKS (DESKTOP) & HAMBURGER (MOBILE)
-             ========================================================================= */}
+          {/* LEFT ZONE: NAVIGATION LINKS DESKTOP AND HAMBURGER MOBILE */}
           <div className="flex items-center gap-4 sm:gap-6 flex-1 justify-start">
             <button
               type="button"
@@ -283,7 +280,7 @@ export default function Navbar() {
                                 {activeDept.name}
                               </span>
                               <span className="text-xs text-stone-400 ml-2">
-                                ({activeDept.tamil})
+                                {activeDept.tamil}
                               </span>
                             </div>
 
@@ -348,9 +345,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* =========================================================================
-              CENTER ZONE: SCRIPT BRAND TITLE
-             ========================================================================= */}
+          {/* CENTER ZONE: SCRIPT BRAND TITLE WITH DISCOUNT MODAL NEWSREADER FONT */}
           <div className="flex-1 flex justify-center text-center px-2">
             <Link
               to="/"
@@ -361,7 +356,10 @@ export default function Navbar() {
               className="flex flex-col items-center justify-center group cursor-pointer"
               aria-label="Pure Organics - Return to Home"
             >
-              <span className="kosterina-font text-2xl xs:text-3xl sm:text-4xl lg:text-[42px] text-stone-950 font-normal leading-none group-hover:text-[#D97706] transition-colors select-none tracking-normal">
+              <span
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-2xl xs:text-3xl sm:text-4xl lg:text-[42px] text-stone-950 font-medium leading-none group-hover:text-[#D97706] transition-colors select-none tracking-normal"
+              >
                 Pure Organics
               </span>
               <span className="text-[7.5px] sm:text-[9px] font-mono uppercase tracking-[0.25em] text-[#D97706] font-bold leading-tight mt-0.5">
@@ -370,9 +368,7 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* =========================================================================
-              RIGHT ZONE: USER PROFILE & CART BAG
-             ========================================================================= */}
+          {/* RIGHT ZONE: USER PROFILE AND CART BAG ONLY */}
           <div className="flex items-center gap-3 xs:gap-4 sm:gap-6 flex-1 justify-end">
             <div className="relative">
               {isPhoneVerified && customerSession ? (
@@ -434,15 +430,6 @@ export default function Navbar() {
               )}
             </div>
 
-            <Link
-              to="/track"
-              className="hidden sm:inline-flex items-center gap-1.5 text-stone-700 hover:text-[#D97706] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-              title="Track Consignments"
-            >
-              <Package className="w-4 h-4 text-stone-900" />
-              <span>Orders</span>
-            </Link>
-
             <button
               type="button"
               onClick={openCart}
@@ -457,9 +444,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* =========================================================================
-            MOBILE ACCORDION DRAWER (< 768px)
-           ========================================================================= */}
+        {/* MOBILE ACCORDION DRAWER */}
         {mobileMenuOpen && (
           <div className="md:hidden p-4 bg-white border-t border-stone-200 shadow-xl flex flex-col gap-2 text-left">
             <NavLink
