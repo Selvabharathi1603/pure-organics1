@@ -261,7 +261,65 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 3. CART DRAWER & PERSISTENCE
+  // 3. CUSTOMER MOBILE OTP AUTHENTICATION & SESSION
+  const [customerSession, setCustomerSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem("po_customer_session");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isPhoneVerified = Boolean(customerSession?.phone);
+
+  const sendCustomerOtp = async (phone) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      return { success: false, message: "Network connection error" };
+    }
+  };
+
+  const verifyCustomerOtp = async (phone, otp, full_name = "") => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, otp, full_name }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.customer) {
+        setCustomerSession(data.customer);
+        try {
+          localStorage.setItem(
+            "po_customer_session",
+            JSON.stringify(data.customer),
+          );
+        } catch {}
+      }
+
+      return data;
+    } catch (err) {
+      return { success: false, message: "Network verification error" };
+    }
+  };
+
+  const logoutCustomer = () => {
+    setCustomerSession(null);
+    try {
+      localStorage.removeItem("po_customer_session");
+    } catch {}
+  };
+
+  // 4. CART DRAWER & PERSISTENCE
   const [isCartOpen, setIsCartOpen] = useState(false);
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
@@ -319,7 +377,7 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_cart");
   };
 
-  // 4. PRODUCTS CATALOG
+  // 5. PRODUCTS CATALOG
   const [products, setProducts] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_products");
@@ -466,7 +524,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 5. ORDERS & LOGISTICS
+  // 6. ORDERS & LOGISTICS
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_orders");
@@ -590,7 +648,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 6. DYNAMIC CMS & ANNOUNCEMENTS (Integrated with new Theme)
+  // 7. DYNAMIC CMS & ANNOUNCEMENTS
   const [heroSlides, setHeroSlides] = useState([
     {
       mode: "photo",
@@ -636,7 +694,6 @@ export const StoreProvider = ({ children }) => {
     discountPercent: 10,
   });
 
-  // Pull active CMS sections on mount
   const fetchCMS = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/cms/all`);
@@ -678,7 +735,6 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // Helper for components needing immediate featured products
   const featuredHarvests = useMemo(() => {
     return products.slice(0, 3);
   }, [products]);
@@ -692,6 +748,11 @@ export const StoreProvider = ({ children }) => {
         logoutAdmin,
         isCodEnabled,
         toggleCodStatus,
+        customerSession,
+        isPhoneVerified,
+        sendCustomerOtp,
+        verifyCustomerOtp,
+        logoutCustomer,
         products,
         featuredHarvests,
         loadingProducts,

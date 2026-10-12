@@ -4,8 +4,6 @@ import {
   Trash2,
   ShoppingBag,
   ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
   CheckCircle2,
   Copy,
   Compass,
@@ -18,11 +16,14 @@ import {
   Loader2,
   Check,
   ChevronRight,
+  ArrowRight,
+  ArrowLeft,
   AlertCircle,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
 import PincodeChecker from "../../components/PincodeChecker";
+import PhoneAuthModal from "../../components/PhoneAuthModal";
 
 const API_BASE_URL =
   typeof window !== "undefined" && window.location.hostname === "localhost"
@@ -38,6 +39,8 @@ export default function Cart({ isOpen, onClose }) {
     announcements,
     discountConfig,
     isCodEnabled,
+    isPhoneVerified,
+    customerSession,
   } = useStore();
   const navigate = useNavigate();
 
@@ -45,10 +48,25 @@ export default function Cart({ isOpen, onClose }) {
   const [currentStep, setCurrentStep] = useState(1);
 
   const [customer, setCustomer] = useState({
-    name: "",
-    phone: "",
-    address: "",
+    name: customerSession?.full_name || "",
+    phone: customerSession?.phone || "",
+    address: customerSession?.address || "",
   });
+
+  // Keep customer details synced with verified session
+  useEffect(() => {
+    if (customerSession?.phone) {
+      setCustomer((prev) => ({
+        ...prev,
+        phone: customerSession.phone,
+        name: prev.name || customerSession.full_name || "",
+        address: prev.address || customerSession.address || "",
+      }));
+    }
+  }, [customerSession]);
+
+  // PhoneAuthModal trigger state
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [allowWhatsApp, setAllowWhatsApp] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState(
@@ -82,7 +100,7 @@ export default function Cart({ isOpen, onClose }) {
     0,
   );
 
-  // Original Market MRP (15% higher standard market reference)
+  // Original Market MRP
   const originalMRP = Math.round(subtotal * 1.15);
   const millDirectSavings = Math.max(0, originalMRP - subtotal);
 
@@ -96,7 +114,7 @@ export default function Cart({ isOpen, onClose }) {
     }
   }
 
-  // Total negative savings (Standard Mill Savings + Voucher)
+  // Total negative savings
   const totalSavings = millDirectSavings + couponDiscount;
   const finalPayable = Math.max(0, subtotal - couponDiscount);
 
@@ -165,6 +183,10 @@ export default function Cart({ isOpen, onClose }) {
 
   const handleProceedToShipping = () => {
     setFormError("");
+    if (!isPhoneVerified) {
+      setShowAuthModal(true);
+      return;
+    }
     setCurrentStep(2);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -286,6 +308,17 @@ export default function Cart({ isOpen, onClose }) {
       payment_ref: paymentRef,
     });
 
+    // Sync updated address profile to MySQL for future visits
+    fetch(`${API_BASE_URL}/api/customers/update-profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: customer.phone,
+        full_name: customer.name,
+        address: customer.address,
+      }),
+    }).catch(() => {});
+
     setCompletedOrder({
       ...snapshot,
       trackingId: generatedTrackingId,
@@ -330,7 +363,7 @@ export default function Cart({ isOpen, onClose }) {
   };
 
   // -------------------------------------------------------------
-  // 1. ORDER CONFIRMED VIEW (WITH STRIKETHROUGH EVERYWHERE)
+  // 1. ORDER CONFIRMED VIEW
   // -------------------------------------------------------------
   if (completedOrder) {
     return (
@@ -448,7 +481,6 @@ export default function Cart({ isOpen, onClose }) {
                 ))}
               </div>
 
-              {/* Order Placed Strikethrough Methodology */}
               <div className="space-y-2 pt-2 border-t border-stone-100 text-xs">
                 <div className="flex justify-between text-stone-500">
                   <span>Market MRP Total:</span>
@@ -837,7 +869,7 @@ export default function Cart({ isOpen, onClose }) {
                 )}
               </div>
 
-              {/* Step 1 Subtotal Breakdown with Strikethrough Methodology */}
+              {/* Subtotal Breakdown */}
               <div className="pt-2 border-t border-stone-100 space-y-1.5 text-xs">
                 <div className="flex justify-between text-stone-600">
                   <span>Market MRP Total:</span>
@@ -885,13 +917,21 @@ export default function Cart({ isOpen, onClose }) {
         {currentStep === 2 && (
           <div className="space-y-6">
             <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-5">
-              <div className="border-b border-stone-100 pb-3">
-                <h2 className="text-base font-bold text-stone-900">
-                  Recipient &amp; Delivery Address
-                </h2>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Enter delivery location for door parcel handoff.
-                </p>
+              <div className="border-b border-stone-100 pb-3 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-stone-900">
+                    Recipient &amp; Delivery Address
+                  </h2>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Enter delivery location for door parcel handoff.
+                  </p>
+                </div>
+                {isPhoneVerified && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Verified +91 {customer.phone}
+                  </span>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -913,17 +953,13 @@ export default function Cart({ isOpen, onClose }) {
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Phone Number *
+                    Phone Number (Verified) *
                   </label>
                   <input
                     type="tel"
-                    required
-                    placeholder="e.g. +91 98765 43210"
+                    disabled
                     value={customer.phone}
-                    onChange={(e) =>
-                      setCustomer({ ...customer, phone: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 text-xs rounded-xl bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#D97706] transition-all"
+                    className="w-full px-4 py-2.5 text-xs rounded-xl bg-stone-100 border border-stone-200 text-stone-600 font-mono font-bold cursor-not-allowed"
                   />
 
                   {/* WhatsApp Update Card */}
@@ -1008,7 +1044,7 @@ export default function Cart({ isOpen, onClose }) {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* STEP 3: PAYMENT METHOD & STRIKETHROUGH BREAKDOWN EVERYWHERE */}
+        {/* STEP 3: PAYMENT METHOD */}
         {/* ------------------------------------------------------------- */}
         {currentStep === 3 && (
           <div className="space-y-6">
@@ -1050,7 +1086,7 @@ export default function Cart({ isOpen, onClose }) {
                     : "grid-cols-1"
                 }`}
               >
-                {/* 1. Cash on Delivery (Controlled by Super Admin) */}
+                {/* 1. Cash on Delivery */}
                 {isCodEnabled !== false && (
                   <button
                     type="button"
@@ -1087,7 +1123,7 @@ export default function Cart({ isOpen, onClose }) {
                 </button>
               </div>
 
-              {/* Optional Notice when COD is Disabled by Super Admin */}
+              {/* Notice when COD is Disabled */}
               {isCodEnabled === false && (
                 <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 text-stone-700 text-xs">
                   <AlertCircle className="w-4 h-4 text-[#D97706] shrink-0" />
@@ -1098,9 +1134,8 @@ export default function Cart({ isOpen, onClose }) {
                 </div>
               )}
 
-              {/* Total Summary Breakdown with Guaranteed Strikethrough Methodology */}
+              {/* Total Summary Breakdown */}
               <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-2.5 text-xs">
-                {/* MRP Subtotal with Strikethrough */}
                 <div className="flex justify-between items-center text-stone-600">
                   <span>Market MRP Subtotal</span>
                   <span className="font-mono font-bold line-through text-stone-400">
@@ -1108,7 +1143,6 @@ export default function Cart({ isOpen, onClose }) {
                   </span>
                 </div>
 
-                {/* Negative Discount Deduction Row */}
                 <div className="flex justify-between items-center text-[#D97706] font-bold bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/80">
                   <span className="flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5" />
@@ -1125,7 +1159,6 @@ export default function Cart({ isOpen, onClose }) {
                   </span>
                 </div>
 
-                {/* Delivery Fee */}
                 <div className="flex justify-between text-stone-600">
                   <span>Shipping &amp; Packaging</span>
                   <span className="text-[#D97706] font-bold">
@@ -1133,7 +1166,6 @@ export default function Cart({ isOpen, onClose }) {
                   </span>
                 </div>
 
-                {/* Final Payable with Dual-Price Strikethrough */}
                 <div className="flex justify-between items-baseline text-stone-900 pt-3 border-t border-stone-200">
                   <div>
                     <span className="text-sm font-black block">
@@ -1203,6 +1235,25 @@ export default function Cart({ isOpen, onClose }) {
           </div>
         )}
       </div>
+
+      {/* Mandatory Phone Verification Gate */}
+      <PhoneAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={(verifiedCustomer) => {
+          if (verifiedCustomer) {
+            setCustomer((prev) => ({
+              ...prev,
+              phone: verifiedCustomer.phone,
+              name: prev.name || verifiedCustomer.full_name || "",
+              address: prev.address || verifiedCustomer.address || "",
+            }));
+          }
+          setShowAuthModal(false);
+          setCurrentStep(2);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
     </div>
   );
 

@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
-const BASE_URL = CONFIG_URL || "http://localhost:5000";
+const BASE_URL =
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : CONFIG_URL || "https://pure-organics1.onrender.com";
 
 const EXACT_MATCH_CATEGORIES = [
   {
@@ -84,29 +87,36 @@ export default function ShopByCategory() {
     const fetchCats = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/categories`);
+        if (!res.ok) return;
+
         const json = await res.json();
-        if (
-          isMounted &&
-          json.success &&
-          Array.isArray(json.data) &&
-          json.data.length > 0
-        ) {
+        const incomingData = Array.isArray(json)
+          ? json
+          : json?.data && Array.isArray(json.data)
+            ? json.data
+            : null;
+
+        if (isMounted && incomingData && incomingData.length > 0) {
           const merged = EXACT_MATCH_CATEGORIES.map((item) => {
-            const found = json.data.find(
-              (c) => c.category_key === item.category_key,
+            const found = incomingData.find(
+              (c) =>
+                c.category_key === item.category_key ||
+                c.id === item.category_key ||
+                c.id === item.id,
             );
             return found
               ? {
                   ...item,
                   name: found.name || item.name,
-                  count: found.batch_count || item.count,
+                  count: found.batch_count || found.count || item.count,
+                  image: found.image || item.image,
                 }
               : item;
           });
           setCategories(merged);
         }
       } catch (err) {
-        // Fallback gracefully
+        // Fallback gracefully to default catalog
       }
     };
     fetchCats();

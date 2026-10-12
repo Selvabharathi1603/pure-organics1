@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -10,23 +10,32 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useStore } from "../context/storecontext";
+import PhoneAuthModal from "./PhoneAuthModal";
 
 export default function CartDrawer() {
-  const { isCartOpen, closeCart, cart, updateQuantity, removeFromCart } =
-    useStore();
+  const navigate = useNavigate();
+  const {
+    isCartOpen,
+    closeCart,
+    cart,
+    updateQuantity,
+    removeFromCart,
+    isPhoneVerified,
+    customerSession,
+  } = useStore();
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const totalCartItems = (cart || []).reduce(
     (sum, item) => sum + (item.qty || 1),
     0,
   );
 
-  // Subtotal (Actual selling price)
   const subtotal = (cart || []).reduce(
     (sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1),
     0,
   );
 
-  // Original MRP calculation
   const totalMRP = (cart || []).reduce((sum, item) => {
     const original = item.originalPrice
       ? Number(item.originalPrice)
@@ -37,6 +46,17 @@ export default function CartDrawer() {
   const totalSaved = Math.max(0, totalMRP - subtotal);
   const deliveryCharge = subtotal >= 499 ? 0 : 50;
   const finalTotal = subtotal + deliveryCharge;
+
+  const handleCheckoutClick = () => {
+    if (!cart || cart.length === 0) return;
+
+    if (isPhoneVerified) {
+      closeCart();
+      navigate("/checkout");
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -279,15 +299,27 @@ export default function CartDrawer() {
                     </div>
                   </div>
 
+                  {isPhoneVerified && (
+                    <div className="px-3 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-between text-[11px]">
+                      <span className="text-emerald-300 font-bold flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        verified: +91 {customerSession?.phone}
+                      </span>
+                      <span className="text-emerald-400 font-mono font-bold">
+                        ready
+                      </span>
+                    </div>
+                  )}
+
                   {/* Checkout Button */}
-                  <Link
-                    to="/cart"
-                    onClick={closeCart}
+                  <button
+                    type="button"
+                    onClick={handleCheckoutClick}
                     className="w-full inline-flex items-center justify-center gap-2 py-3.5 bg-[#D97706] hover:bg-[#B45309] text-black font-extrabold rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer active:scale-[0.99]"
                   >
                     <span>Proceed to Checkout</span>
                     <ArrowRight className="w-4 h-4 text-black" />
-                  </Link>
+                  </button>
 
                   <p className="flex items-center justify-center gap-1.5 text-[11px] text-stone-400">
                     <ShieldCheck className="w-3.5 h-3.5 text-[#F59E0B]" />
@@ -297,6 +329,16 @@ export default function CartDrawer() {
               )}
             </motion.div>
           </div>
+
+          {/* Phone Authentication Gate */}
+          <PhoneAuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            onSuccess={() => {
+              closeCart();
+              navigate("/checkout");
+            }}
+          />
         </div>
       )}
     </AnimatePresence>

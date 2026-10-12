@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { API_BASE_URL as CONFIG_URL } from "../config/api";
 
-const BASE_URL = CONFIG_URL || "http://localhost:5000";
+const BASE_URL =
+  typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : CONFIG_URL || "https://pure-organics1.onrender.com";
 
 const HERO_BG_IMAGE =
   "https://t3.ftcdn.net/jpg/02/71/72/06/360_F_271720694_xeOnMuwr2oiP9PG7yn8cKet1upl76QOu.jpg";
@@ -123,14 +126,17 @@ export default function HeroSection({ onAddToCart }) {
     const fetchHeroProducts = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/hero/bestsellers`);
+        if (!res.ok) return;
+
         const json = await res.json();
-        if (
-          isMounted &&
-          json.success &&
-          Array.isArray(json.data) &&
-          json.data.length > 0
-        ) {
-          setProducts(json.data);
+        const incoming = Array.isArray(json)
+          ? json
+          : json?.data && Array.isArray(json.data)
+            ? json.data
+            : null;
+
+        if (isMounted && incoming && incoming.length > 0) {
+          setProducts(incoming);
         }
       } catch (err) {
         // Fallback default array stays active
@@ -185,7 +191,7 @@ export default function HeroSection({ onAddToCart }) {
             {/* Direct Farm Pill */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/60 border border-white/20 text-white text-xs font-semibold tracking-wide backdrop-blur-md shadow-md">
               <Sparkles size={13} className="text-amber-400" />
-              <span>Direct From Tirunelveli & Thanjavur Farmlands</span>
+              <span>Direct From Tirunelveli &amp; Thanjavur Farmlands</span>
             </div>
 
             {/* Headline with Acid League Serif */}
@@ -195,7 +201,7 @@ export default function HeroSection({ onAddToCart }) {
             >
               Real Mara Chekku Oils <br />
               <span className="text-amber-400 drop-shadow-md italic font-normal">
-                & Heirloom Grains.
+                &amp; Heirloom Grains.
               </span>
             </h1>
 

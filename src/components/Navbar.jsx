@@ -11,7 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useStore } from "../context/storecontext";
-import CustomerAuthModal from "./CustomerAuthModal";
+import PhoneAuthModal from "./PhoneAuthModal";
 
 const DEPARTMENTS = [
   {
@@ -149,7 +149,8 @@ const DEPARTMENTS = [
 ];
 
 export default function Navbar() {
-  const { cart, openCart } = useStore();
+  const { cart, openCart, customerSession, isPhoneVerified, logoutCustomer } =
+    useStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
@@ -159,23 +160,13 @@ export default function Navbar() {
   const [activeDept, setActiveDept] = useState(DEPARTMENTS[0]);
   const [mobileExpandedCat, setMobileExpandedCat] = useState(null);
 
-  const [customer, setCustomer] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("customer_info")) || null;
-    } catch {
-      return null;
-    }
-  });
-
   const totalCartItems = cart.reduce(
     (total, item) => total + (item.qty || 1),
     0,
   );
 
   const handleLogout = () => {
-    localStorage.removeItem("customer_info");
-    localStorage.removeItem("customer_token");
-    setCustomer(null);
+    logoutCustomer();
     setCustomerDropdownOpen(false);
   };
 
@@ -302,7 +293,7 @@ export default function Navbar() {
                               className="text-xs font-bold text-[#D97706] hover:text-amber-700 flex items-center gap-1"
                             >
                               <span>View All</span>
-                              <ArrowRight className="w-3 h-3" />
+                              <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
 
@@ -358,7 +349,7 @@ export default function Navbar() {
           </div>
 
           {/* =========================================================================
-              CENTER ZONE: SCRIPT BRAND TITLE (CLICK TO RETURN HOME)
+              CENTER ZONE: SCRIPT BRAND TITLE
              ========================================================================= */}
           <div className="flex-1 flex justify-center text-center px-2">
             <Link
@@ -380,20 +371,20 @@ export default function Navbar() {
           </div>
 
           {/* =========================================================================
-              RIGHT ZONE: SIGN IN / ACCOUNT & CART BAG
+              RIGHT ZONE: USER PROFILE & CART BAG
              ========================================================================= */}
           <div className="flex items-center gap-3 xs:gap-4 sm:gap-6 flex-1 justify-end">
             <div className="relative">
-              {customer ? (
+              {isPhoneVerified && customerSession ? (
                 <div>
                   <button
                     type="button"
                     onClick={() => setCustomerDropdownOpen((prev) => !prev)}
                     className="inline-flex items-center gap-1.5 text-stone-900 text-xs font-black uppercase tracking-wider hover:text-[#D97706] transition-colors cursor-pointer"
                   >
-                    <User className="w-3.5 h-3.5 text-stone-900" />
-                    <span className="max-w-[60px] xs:max-w-[80px] sm:max-w-[100px] truncate">
-                      {customer.firstName || "Account"}
+                    <User className="w-4 h-4 text-stone-900" />
+                    <span className="max-w-[70px] xs:max-w-[90px] sm:max-w-[110px] truncate">
+                      {customerSession.full_name || customerSession.phone}
                     </span>
                   </button>
 
@@ -401,10 +392,10 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-3 w-52 bg-white border border-stone-200 rounded-2xl shadow-xl p-2 z-50 flex flex-col gap-1 text-xs text-left">
                       <div className="px-3 py-2 border-b border-stone-200">
                         <p className="font-bold text-stone-900 truncate">
-                          {customer.firstName} {customer.lastName}
+                          {customerSession.full_name || "Verified Customer"}
                         </p>
-                        <p className="text-[11px] text-stone-500 truncate">
-                          +91 {customer.phone}
+                        <p className="text-[11px] text-stone-500 font-mono truncate">
+                          +91 {customerSession.phone}
                         </p>
                       </div>
 
@@ -414,7 +405,7 @@ export default function Navbar() {
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-50 transition-colors font-medium"
                       >
                         <Package className="w-3.5 h-3.5 text-stone-900" />
-                        <span>My Consignments</span>
+                        <span>My Orders</span>
                       </Link>
 
                       <button
@@ -432,12 +423,25 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => setIsAuthOpen(true)}
-                  className="text-stone-900 text-xs sm:text-[13px] font-black uppercase tracking-wider hover:text-[#D97706] transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-stone-900 hover:text-[#D97706] transition-colors cursor-pointer p-1"
+                  title="Sign In with Mobile OTP"
                 >
-                  Sign In
+                  <User className="w-5 h-5 stroke-[2]" />
+                  <span className="hidden sm:inline text-xs font-black uppercase tracking-wider">
+                    Sign In
+                  </span>
                 </button>
               )}
             </div>
+
+            <Link
+              to="/track"
+              className="hidden sm:inline-flex items-center gap-1.5 text-stone-700 hover:text-[#D97706] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              title="Track Consignments"
+            >
+              <Package className="w-4 h-4 text-stone-900" />
+              <span>Orders</span>
+            </Link>
 
             <button
               type="button"
@@ -528,13 +532,9 @@ export default function Navbar() {
         )}
       </nav>
 
-      <CustomerAuthModal
+      <PhoneAuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onLoginSuccess={(newCustomer) => {
-          setCustomer(newCustomer);
-          setIsAuthOpen(false);
-        }}
       />
     </>
   );
