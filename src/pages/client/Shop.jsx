@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  ShoppingBag,
-  Check,
-  ArrowLeft,
   Search,
   ArrowUpDown,
   X,
   SlidersHorizontal,
-  Star,
-  AlertCircle,
+  ArrowLeft,
+  Check,
+  Plus,
+  Sparkles,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 
@@ -125,34 +124,45 @@ export default function Shop() {
   };
 
   return (
-    <div className="w-full bg-white text-stone-900 font-sans select-none min-h-screen py-10">
+    <div className="w-full bg-[#FAF9F5] text-stone-900 select-none min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-widest uppercase bg-amber-50 text-[#D97706] border border-amber-200">
-            Direct Farm Dispatch
-          </span>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-stone-900 tracking-tight">
-            Our Store <span className="text-[#D97706]">Catalog.</span>
+        {/* festive banner */}
+        <div className="text-center space-y-3 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[#D97706]">
+            <Sparkles className="w-3.5 h-3.5 fill-[#D97706] text-[#D97706]" />
+            <span className="text-[11px] font-mono font-bold tracking-widest uppercase">
+              navratri festive sale · up to 25% off
+            </span>
+          </div>
+
+          <h1
+            style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+            className="text-4xl sm:text-5xl font-medium text-stone-950 tracking-tight"
+          >
+            festive harvest collection
           </h1>
-          <p className="text-xs sm:text-sm text-stone-600 font-medium">
-            Cold-pressed oils, unpolished native rice, raw wild honey, and whole
-            millets.
+
+          <p
+            style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+            className="text-sm sm:text-base text-stone-600 italic"
+          >
+            traditional wood-pressed oils, unpolished rice, raw forest honey,
+            and native millets at exclusive navratri prices.
           </p>
         </div>
 
-        {/* Search, Sort, and Category Bar */}
-        <div className="bg-stone-50 p-4 sm:p-5 rounded-3xl border border-stone-200 shadow-xs space-y-4">
+        {/* filter bar */}
+        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-stone-200 shadow-sm space-y-4">
           <div className="flex flex-col md:flex-row items-center gap-3">
-            {/* Search Input */}
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search products (e.g., Sesame Oil, Kavuni Rice, Honey)..."
+                placeholder="search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-10 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-stone-200 text-stone-900 focus:outline-none focus:border-[#D97706] transition-all"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="w-full pl-11 pr-10 py-2.5 text-sm rounded-2xl bg-[#FAF9F5] border border-stone-200 text-stone-900 focus:outline-none focus:border-[#D97706]"
               />
               {searchTerm && (
                 <button
@@ -165,24 +175,23 @@ export default function Shop() {
               )}
             </div>
 
-            {/* Sort Dropdown */}
             <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
               <ArrowUpDown className="w-4 h-4 text-stone-600" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full md:w-auto px-4 py-3 text-xs sm:text-sm rounded-2xl bg-white border border-stone-200 font-bold text-stone-800 focus:outline-none focus:border-[#D97706] cursor-pointer"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="w-full md:w-auto px-4 py-2.5 text-sm rounded-2xl bg-[#FAF9F5] border border-stone-200 text-stone-800 focus:outline-none focus:border-[#D97706] cursor-pointer"
               >
-                <option value="bestseller">Sort by: Fresh & In Stock</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="name">Alphabetical (A - Z)</option>
+                <option value="bestseller">sort: fresh and in stock</option>
+                <option value="price-low">price: low to high</option>
+                <option value="price-high">price: high to low</option>
+                <option value="name">alphabetical: a - z</option>
               </select>
             </div>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none justify-start md:justify-center pt-2 border-t border-stone-200">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none justify-start md:justify-center pt-2 border-t border-stone-100">
             {CATEGORY_TABS.map((tab) => {
               const isSelected =
                 selectedCategory.toLowerCase() === tab.query.toLowerCase();
@@ -192,10 +201,11 @@ export default function Shop() {
                   key={tab.id}
                   type="button"
                   onClick={() => handleCategoryChange(tab.query)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer border ${
+                  style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                  className={`px-4 py-1.5 rounded-full text-sm transition-all duration-200 cursor-pointer border ${
                     isSelected
-                      ? "bg-stone-900 text-white border-stone-900 shadow-xs"
-                      : "bg-white text-stone-700 border-stone-200 hover:border-[#D97706] hover:text-stone-950"
+                      ? "bg-stone-900 text-white border-stone-900 shadow-sm"
+                      : "bg-[#FAF9F5] text-stone-700 border-stone-200 hover:border-[#D97706] hover:text-stone-950"
                   }`}
                 >
                   {tab.name}
@@ -205,14 +215,25 @@ export default function Shop() {
           </div>
         </div>
 
-        {/* Section Info Bar */}
+        {/* section header */}
         <div className="flex items-center justify-between border-b border-stone-200 pb-3 text-left">
           <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-stone-900">
-              {selectedCategory === "All" ? "All Products" : selectedCategory}
-            </h2>
-            <p className="text-xs text-stone-500 font-medium mt-0.5">
-              Showing {filteredProducts.length} items available
+            <div className="flex items-center gap-2.5">
+              <h2
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-2xl sm:text-3xl font-medium text-stone-900"
+              >
+                {selectedCategory === "All" ? "all harvests" : selectedCategory}
+              </h2>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-[#D97706]">
+                navratri festive deals
+              </span>
+            </div>
+            <p
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-xs text-stone-500 italic mt-0.5"
+            >
+              showing {filteredProducts.length} items with festive discounts
             </p>
           </div>
 
@@ -223,114 +244,113 @@ export default function Shop() {
                 handleCategoryChange("All");
                 setSearchTerm("");
               }}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#D97706] hover:underline cursor-pointer"
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="inline-flex items-center gap-1 text-sm font-medium text-[#D97706] hover:underline cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Reset Filters
+              <ArrowLeft className="w-3.5 h-3.5" /> reset filters
             </button>
           )}
         </div>
 
-        {/* Product Cards Grid */}
+        {/* lando norris card structure */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-2">
             {filteredProducts.map((product) => {
               const prodId = product.id || product._id;
               const isAdded = addedId === prodId;
               const isOutOfStock = product.inStock === false;
+              const mrpPrice =
+                Number(product.originalPrice) ||
+                Math.round(Number(product.price) * 1.25);
 
               return (
                 <div
                   key={prodId}
-                  className="group bg-white rounded-2xl border border-stone-200 hover:border-[#D97706] transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-xs hover:shadow-md text-left p-4"
+                  onClick={() => handleAddToCart(product)}
+                  className="group relative flex flex-col justify-between rounded-[32px] bg-[#F7F5F0] border-2 border-stone-200/90 p-5 transition-all duration-300 hover:border-[#D97706] hover:shadow-2xl cursor-pointer text-left"
                 >
-                  {/* Image Frame */}
-                  <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-100 flex items-center justify-center">
+                  {/* floating hero image viewport without inner box */}
+                  <div className="relative aspect-square w-full flex items-center justify-center overflow-hidden py-3">
                     <img
                       src={product.image || "/placeholder-oil.png"}
                       alt={product.name}
                       loading="lazy"
-                      className={`w-full h-full object-contain p-2 transition-transform duration-300 ${
-                        isOutOfStock
-                          ? "grayscale opacity-50"
-                          : "group-hover:scale-105"
+                      className={`max-h-full max-w-full object-contain filter drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-110 ${
+                        isOutOfStock ? "grayscale opacity-40" : ""
                       }`}
                     />
-                    <span className="absolute top-2.5 left-2.5 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/95 text-stone-900 border border-stone-200 shadow-2xs">
-                      {product.category || "Native"}
-                    </span>
 
-                    {isOutOfStock ? (
-                      <span className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-900 text-white shadow-xs">
-                        Out of Stock
+                    {/* minimal category & sale tags */}
+                    <div className="absolute top-1 left-1 flex flex-col gap-1 items-start">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/80 text-stone-700 border border-stone-200">
+                        {product.category || "Native"}
                       </span>
-                    ) : (
-                      <span className="absolute top-2.5 right-2.5 text-[11px] font-bold px-2 py-0.5 rounded-md bg-white/95 text-stone-900 border border-stone-200 flex items-center gap-1 shadow-2xs">
-                        <Star className="w-3 h-3 fill-[#D97706] text-[#D97706]" />
-                        {product.rating || "4.9"}
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
+                        sale
+                      </span>
+                    </div>
+
+                    {isOutOfStock && (
+                      <span
+                        style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                        className="absolute top-1 right-1 text-xs italic px-2.5 py-0.5 rounded-full bg-stone-900 text-white"
+                      >
+                        sold out
                       </span>
                     )}
                   </div>
 
-                  {/* Product Details */}
-                  <div className="pt-3.5 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-mono font-bold text-[#D97706] uppercase tracking-wider block">
-                        {product.unit || "Standard Pack"}
-                      </span>
-                      <h3 className="text-base font-bold text-stone-900 leading-snug line-clamp-1 group-hover:text-[#D97706] transition-colors">
+                  {/* minimal bottom strip: title left, strike-out mrp and solid dark price right */}
+                  <div className="mt-4 pt-3 flex items-center justify-between gap-2 border-t border-stone-300/60">
+                    <div className="min-w-0 pr-2">
+                      <h3
+                        style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                        className="text-lg font-medium text-stone-950 group-hover:text-[#D97706] transition-colors leading-snug truncate"
+                        title={product.name}
+                      >
                         {product.name}
                       </h3>
-                      <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                        {product.description ||
-                          "Freshly pressed and packed directly at the mill."}
+                      <p
+                        style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                        className="text-xs text-stone-500 italic truncate"
+                      >
+                        {product.unit || "cold batch"}
                       </p>
                     </div>
 
-                    {/* Price and Cart Button */}
-                    <div className="pt-2 border-t border-stone-100 space-y-2.5">
-                      <div className="flex items-baseline justify-between">
-                        <div>
-                          <span className="text-[10px] uppercase font-mono font-bold text-stone-400 block">
-                            Price
-                          </span>
-                          <span className="text-lg font-black text-stone-900">
-                            ₹{product.price}
-                          </span>
-                        </div>
-                        {product.originalPrice && (
-                          <span className="text-xs text-stone-400 line-through">
-                            ₹{product.originalPrice}
-                          </span>
-                        )}
+                    <div className="text-right shrink-0 flex items-center gap-2.5">
+                      <div className="flex flex-col items-end leading-none">
+                        <span className="font-mono text-xs text-stone-400 line-through font-semibold">
+                          ₹{mrpPrice}
+                        </span>
+                        <span
+                          style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                          className="text-xl font-bold text-stone-950 mt-1"
+                        >
+                          ₹{product.price}
+                        </span>
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => handleAddToCart(product)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product);
+                        }}
                         disabled={isOutOfStock}
-                        className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full border transition-all cursor-pointer ${
                           isOutOfStock
-                            ? "bg-stone-200 text-stone-400 cursor-not-allowed"
+                            ? "border-stone-200 text-stone-300 cursor-not-allowed"
                             : isAdded
-                              ? "bg-[#D97706] text-black font-extrabold shadow-xs"
-                              : "bg-stone-900 hover:bg-[#D97706] text-white hover:text-black shadow-xs"
+                              ? "bg-[#D97706] text-black border-[#D97706]"
+                              : "border-stone-400 text-stone-700 group-hover:border-[#D97706] group-hover:text-[#D97706]"
                         }`}
+                        title="Add to Cart"
                       >
-                        {isOutOfStock ? (
-                          <>
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            <span>Out of Stock</span>
-                          </>
-                        ) : isAdded ? (
-                          <>
-                            <Check className="w-4 h-4 stroke-[3]" />
-                            <span>Added to Cart</span>
-                          </>
+                        {isAdded ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
                         ) : (
-                          <>
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Add to Cart</span>
-                          </>
+                          <Plus className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
@@ -340,14 +360,19 @@ export default function Shop() {
             })}
           </div>
         ) : (
-          <div className="bg-stone-50 border border-stone-200 rounded-3xl p-12 text-center space-y-4 shadow-xs">
+          <div className="bg-white border border-stone-200 rounded-3xl p-12 text-center space-y-4 shadow-sm">
             <SlidersHorizontal className="w-10 h-10 text-stone-300 mx-auto" />
-            <h3 className="text-lg font-bold text-stone-900">
-              No Products Found
+            <h3
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-2xl font-medium text-stone-900"
+            >
+              no products found
             </h3>
-            <p className="text-sm text-stone-600">
-              No items matched your current filter "
-              {searchTerm || selectedCategory}".
+            <p
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-sm text-stone-600 italic"
+            >
+              no items matched your current filter
             </p>
             <button
               type="button"
@@ -355,9 +380,10 @@ export default function Shop() {
                 handleCategoryChange("All");
                 setSearchTerm("");
               }}
-              className="px-6 py-2.5 rounded-full bg-stone-900 hover:bg-[#D97706] hover:text-black text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs"
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="px-6 py-2 rounded-full bg-stone-900 hover:bg-[#D97706] hover:text-black text-white text-sm transition-all cursor-pointer shadow-sm"
             >
-              Reset Filters & View All
+              reset filters and view all
             </button>
           </div>
         )}
