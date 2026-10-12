@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Trash2,
@@ -18,6 +18,7 @@ import {
   Loader2,
   Check,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 import TrackingStepper from "../../components/TrackingStepper";
@@ -36,6 +37,7 @@ export default function Cart({ isOpen, onClose }) {
     placeOrder,
     announcements,
     discountConfig,
+    isCodEnabled,
   } = useStore();
   const navigate = useNavigate();
 
@@ -49,8 +51,17 @@ export default function Cart({ isOpen, onClose }) {
   });
 
   const [allowWhatsApp, setAllowWhatsApp] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState(
+    isCodEnabled !== false ? "cod" : "online",
+  );
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Automatically fall back to online payment if Super Admin turns off COD
+  useEffect(() => {
+    if (isCodEnabled === false && paymentMethod === "cod") {
+      setPaymentMethod("online");
+    }
+  }, [isCodEnabled, paymentMethod]);
 
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -1031,24 +1042,34 @@ export default function Cart({ isOpen, onClose }) {
                 </p>
               </div>
 
-              {/* Payment Select Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("cod")}
-                  className={`p-4 rounded-2xl border text-xs font-bold text-center cursor-pointer transition-all flex flex-col items-center gap-2 ${
-                    paymentMethod === "cod"
-                      ? "border-[#D97706] bg-amber-50/70 text-stone-950 shadow-xs"
-                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
-                  }`}
-                >
-                  <Banknote className="w-5 h-5 text-[#D97706]" />
-                  <span>Cash on Delivery</span>
-                  <span className="text-[10px] text-stone-500 font-normal">
-                    Pay securely at your doorstep
-                  </span>
-                </button>
+              {/* Payment Select Cards: DYNAMIC COD VISIBILITY */}
+              <div
+                className={`grid gap-3 ${
+                  isCodEnabled !== false
+                    ? "grid-cols-1 sm:grid-cols-2"
+                    : "grid-cols-1"
+                }`}
+              >
+                {/* 1. Cash on Delivery (Controlled by Super Admin) */}
+                {isCodEnabled !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("cod")}
+                    className={`p-4 rounded-2xl border text-xs font-bold text-center cursor-pointer transition-all flex flex-col items-center gap-2 ${
+                      paymentMethod === "cod"
+                        ? "border-[#D97706] bg-amber-50/70 text-stone-950 shadow-xs"
+                        : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
+                    }`}
+                  >
+                    <Banknote className="w-5 h-5 text-[#D97706]" />
+                    <span>Cash on Delivery</span>
+                    <span className="text-[10px] text-stone-500 font-normal">
+                      Pay securely at your doorstep
+                    </span>
+                  </button>
+                )}
 
+                {/* 2. Instant Online Payment */}
                 <button
                   type="button"
                   onClick={() => setPaymentMethod("online")}
@@ -1065,6 +1086,17 @@ export default function Cart({ isOpen, onClose }) {
                   </span>
                 </button>
               </div>
+
+              {/* Optional Notice when COD is Disabled by Super Admin */}
+              {isCodEnabled === false && (
+                <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 text-stone-700 text-xs">
+                  <AlertCircle className="w-4 h-4 text-[#D97706] shrink-0" />
+                  <span>
+                    Cash on Delivery is currently paused for fresh batch
+                    dispatch. Please pay securely online via UPI or card.
+                  </span>
+                </div>
+              )}
 
               {/* Total Summary Breakdown with Guaranteed Strikethrough Methodology */}
               <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-2.5 text-xs">

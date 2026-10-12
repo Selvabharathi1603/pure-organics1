@@ -1,224 +1,245 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Heart,
-  ShoppingBag,
-  ArrowRight,
-  CheckCircle2,
-  Sun,
-  Flame,
-} from "lucide-react";
+import { ShoppingBag, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useStore } from "../context/storecontext";
 
-const ROUTINE_CONFIG = [
+// Image imports matching the double .png.png file names in your folder
+import DP1 from "../assets/image/Dp1.png.png";
+import DP2 from "../assets/image/Dp2.png.png";
+import DP3 from "../assets/image/Dp3.png.png";
+
+const DIET_PILLARS = [
   {
-    id: "morning-wellness",
-    tabLabel: "Morning Honey & Oils",
-    icon: Sun,
-    badge: "Daily Routine",
-    headline: "Pure Raw Honey & Virgin Coconut Oil",
-    description:
-      "Start the morning naturally. Unheated raw forest honey and cold-pressed virgin oils for daily health and smooth digestion.",
-    routineSchedule:
-      "Take 1 spoon of honey in warm water or milk in the morning",
-    filterFn: (p) =>
-      p.category?.toLowerCase().includes("groceries") ||
-      p.name?.toLowerCase().includes("honey") ||
-      p.name?.toLowerCase().includes("coconut"),
-  },
-  {
-    id: "daily-cooking",
-    tabLabel: "Daily Cooking Oils",
-    icon: Flame,
-    badge: "Traditional Cooking",
-    headline: "Cold Wood-Pressed Groundnut & Sesame Oils",
-    description:
-      "Crushed in traditional wooden chekkus with zero heat and no chemical refining. Keeps the natural aroma and nutrients intact for daily cooking.",
-    routineSchedule:
-      "Ideal for daily sambar, rasam, curries, and dosa seasoning",
+    step: "01",
+    tagline: "TRADITIONAL COLD EXTRACTION",
+    title: "FORMULATED FOR DAILY SOUTH INDIAN COOKING",
+    summary:
+      "Wood-pressed in slow Vaagai pestles under 38°C with zero chemical heat. Retains authentic dense aroma for everyday sambar, rasam, and dosa crisping.",
+    schedule: "Daily seasoning, hot tiffin frying",
+    align: "left",
     filterFn: (p) =>
       p.category?.toLowerCase().includes("oil") ||
       p.name?.toLowerCase().includes("oil"),
   },
   {
-    id: "traditional-grains",
-    tabLabel: "Millets & Traditional Rice",
-    icon: Heart,
-    badge: "Wholesome Grains",
-    headline: "Unpolished Native Rice & Whole Millets",
-    description:
-      "Nutritious grains including Karuppu Kavuni rice, Kodo millet, and Barnyard millet. Retains natural bran and fiber for long-lasting energy.",
-    routineSchedule: "Cook for lunch or dinner in place of polished white rice",
+    step: "02",
+    tagline: "UNPOLISHED ANCESTRAL HARVESTS",
+    title: "LOW GLYCEMIC CARE & SLOW-RELEASE STAPLES",
+    summary:
+      "Unpolished whole grains releasing sustained energy without blood sugar spikes. Pure dietary fiber harvests naturally rich in iron and zinc.",
+    schedule: "Replacement for polished rice at lunch",
+    align: "right",
     filterFn: (p) =>
       p.category?.toLowerCase().includes("grain") ||
       p.category?.toLowerCase().includes("millet") ||
       p.name?.toLowerCase().includes("rice") ||
       p.name?.toLowerCase().includes("millet"),
   },
+  {
+    step: "03",
+    tagline: "RAW VASCULAR NUTRITION",
+    title: "COLD-DECANTED CARDIO & ESSENTIAL LIPIDS",
+    summary:
+      "Raw cold extractions loaded with active phytosterols and unheated fatty acids to naturally nourish cellular and cardiac vitality.",
+    schedule: "1 spoon raw or gentle low-heat sauteing",
+    align: "left",
+    filterFn: (p) =>
+      p.category?.toLowerCase().includes("groceries") ||
+      p.name?.toLowerCase().includes("honey") ||
+      p.name?.toLowerCase().includes("coconut"),
+  },
 ];
 
 export default function DietPreferences() {
   const { products, addToCart } = useStore();
-  const [activeRoutineId, setActiveRoutineId] = useState("morning-wellness");
   const [addedItem, setAddedItem] = useState(null);
-
-  const activeRoutine =
-    ROUTINE_CONFIG.find((r) => r.id === activeRoutineId) || ROUTINE_CONFIG[0];
-
-  const filteredProducts = (products || [])
-    .filter(activeRoutine.filterFn)
-    .slice(0, 2);
 
   const handleQuickAdd = (product) => {
     addToCart(product);
     setAddedItem(product.id);
-    setTimeout(() => setAddedItem(null), 1500);
+    setTimeout(() => setAddedItem(null), 1400);
   };
 
   return (
-    <section className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans select-none">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-stone-200 pb-5 text-left">
-        <div>
-          <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-[#D97706] bg-amber-50 border border-amber-200 px-3 py-1 rounded-full inline-block">
-            Everyday Healthy Habits
+    <section className="relative w-screen -ml-[50vw] left-1/2 right-1/2 m-0 p-0 bg-[#EFE9DD] text-stone-900 pt-28 sm:pt-32 pb-16 sm:pb-24 border-y border-stone-300/80 overflow-x-clip select-none font-editorial">
+      {/* =========================================================================
+          SCREEN-EDGE BOTANICALS (PINNED DIRECTLY TO BROWSER FRAME BORDERS)
+         ========================================================================= */}
+
+      {/* 01: Flush Right Browser Edge */}
+      <div className="absolute right-0 top-[20%] translate-x-[20%] pointer-events-none z-10 select-none">
+        <img
+          src={DP1}
+          alt="South Indian Harvest"
+          className="w-28 xs:w-36 sm:w-48 md:w-60 lg:w-72 xl:w-80 h-auto object-contain opacity-95 drop-shadow-[0_15px_30px_rgba(0,0,0,0.2)]"
+          loading="lazy"
+        />
+      </div>
+
+      {/* 02: Flush Left Browser Edge */}
+      <div className="absolute left-0 top-[50%] -translate-x-[20%] pointer-events-none z-10 select-none">
+        <img
+          src={DP2}
+          alt="Ancestral Grains"
+          className="w-32 xs:w-40 sm:w-52 md:w-64 lg:w-76 xl:w-88 h-auto object-contain opacity-100 drop-shadow-[0_15px_30px_rgba(0,0,0,0.2)]"
+          loading="lazy"
+        />
+      </div>
+
+      {/* 03: Flush Right Browser Edge */}
+      <div className="absolute right-0 top-[80%] translate-x-[20%] pointer-events-none z-10 select-none">
+        <img
+          src={DP3}
+          alt="Fresh Botanical Foliage"
+          className="w-32 xs:w-40 sm:w-52 md:w-64 lg:w-76 xl:w-88 h-auto object-contain opacity-100 drop-shadow-[0_15px_30px_rgba(0,0,0,0.2)]"
+          loading="lazy"
+        />
+      </div>
+
+      {/* =========================================================================
+          MAIN EDITORIAL CANVAS
+         ========================================================================= */}
+      <div className="relative w-full max-w-5xl mx-auto px-6 sm:px-12 md:px-16 z-20">
+        {/* SECTION HEADER: CLEARS FLOATING NAVBAR */}
+        <div className="text-center mb-12 sm:mb-16">
+          <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-[0.25em] text-[#D97706] mb-2 block">
+            Healthy Inside, Happy Outside
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-stone-900 mt-2 tracking-tight">
-            Shop by Daily Use & <span className="text-[#D97706]">Routine</span>
+          <h2 className="font-editorial text-3xl sm:text-4xl md:text-5xl font-bold text-stone-900 tracking-tight leading-tight">
+            Shop by Diet &{" "}
+            <span className="text-[#D97706] italic">Lifestyle Concern</span>
           </h2>
-          <p className="text-xs sm:text-sm text-stone-600 mt-1">
-            Choose pure, traditional staples suited for your family's everyday
-            kitchen cooking.
+          <p className="font-editorial italic mt-2 text-xs sm:text-sm text-stone-600 max-w-md sm:max-w-lg mx-auto leading-relaxed">
+            Every harvest is crushed fresh in traditional Vaagai wooden pestles,
+            delivering honest native staples directly to your kitchen.
           </p>
         </div>
 
-        <Link
-          to="/catalog"
-          className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-900 hover:text-[#D97706] transition-colors self-start md:self-auto"
-        >
-          <span>View All Products</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </div>
+        {/* 3 BALANCED STAGGERED PILLARS (01 LEFT, 02 RIGHT, 03 LEFT) */}
+        <div className="space-y-12 sm:space-y-16 md:space-y-20">
+          {DIET_PILLARS.map((pillar) => {
+            const isRight = pillar.align === "right";
+            const categoryProducts = (products || [])
+              .filter(pillar.filterFn)
+              .slice(0, 2);
 
-      {/* Routine Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {ROUTINE_CONFIG.map((routine) => {
-          const Icon = routine.icon;
-          const isActive = activeRoutineId === routine.id;
-          return (
-            <button
-              key={routine.id}
-              onClick={() => setActiveRoutineId(routine.id)}
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide transition-all cursor-pointer shrink-0 border ${
-                isActive
-                  ? "bg-stone-900 text-white border-stone-900 shadow-xs"
-                  : "bg-white text-stone-700 border-stone-200 hover:border-stone-400"
-              }`}
-            >
-              <Icon
-                className={`w-4 h-4 ${
-                  isActive ? "text-[#D97706]" : "text-stone-500"
-                }`}
-              />
-              <span>{routine.tabLabel}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Routine Showcase Card */}
-      <div className="bg-stone-50 rounded-2xl border border-stone-200 p-6 sm:p-8 space-y-6 text-left">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <div className="lg:col-span-8 space-y-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#92400E] bg-amber-100/70 border border-amber-200 px-2.5 py-0.5 rounded-md inline-block">
-              {activeRoutine.badge}
-            </span>
-            <h3 className="text-xl sm:text-2xl font-extrabold text-stone-900">
-              {activeRoutine.headline}
-            </h3>
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed max-w-2xl font-normal">
-              {activeRoutine.description}
-            </p>
-          </div>
-
-          <div className="lg:col-span-4 bg-white border border-stone-200 rounded-xl p-4 flex items-center gap-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-full bg-amber-50 text-[#D97706] flex items-center justify-center shrink-0 border border-amber-200">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div className="text-xs">
-              <span className="font-bold text-stone-900 block">How to Use</span>
-              <span className="text-stone-600 text-[11px] leading-snug block mt-0.5">
-                {activeRoutine.routineSchedule}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Dynamic Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
+            return (
               <div
-                key={product.id}
-                className="bg-white rounded-xl border border-stone-200 hover:border-[#D97706] p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 group transition-all shadow-xs"
+                key={pillar.step}
+                className={`w-full flex ${
+                  isRight
+                    ? "sm:justify-end sm:text-right text-left"
+                    : "sm:justify-start text-left"
+                }`}
               >
-                <div className="w-full sm:w-28 sm:h-28 aspect-square rounded-lg overflow-hidden bg-stone-100 shrink-0 flex items-center justify-center p-2">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                </div>
+                {/* Content Block */}
+                <div className="w-full sm:max-w-md lg:max-w-lg space-y-2.5">
+                  {/* Big Number */}
+                  <div className="font-editorial text-6xl sm:text-7xl lg:text-8xl font-light text-[#D97706] leading-none select-none">
+                    {pillar.step}
+                  </div>
 
-                <div className="flex-1 space-y-1 text-center sm:text-left w-full">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#D97706] font-bold block">
-                    {product.category || "Farm Staple"}
-                  </span>
-                  <h4 className="font-bold text-sm sm:text-base text-stone-900 line-clamp-1">
-                    {product.name}
-                  </h4>
-                  <span className="text-[11px] text-stone-500 block">
-                    {product.unit || "500ml / 1kg"}
-                  </span>
+                  {/* Headline */}
+                  <div className="font-editorial text-xs sm:text-sm md:text-base font-bold tracking-wide text-stone-900 uppercase">
+                    {pillar.title}
+                  </div>
 
-                  <div className="flex items-center justify-center sm:justify-between gap-3 pt-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-bold text-stone-900">
-                        ₹{product.price}
-                      </span>
-                      {product.originalPrice && (
-                        <span className="text-xs text-stone-400 line-through">
-                          ₹{product.originalPrice}
-                        </span>
-                      )}
+                  {/* Narrative Body */}
+                  <p className="font-editorial text-xs sm:text-sm text-stone-700 leading-relaxed font-normal">
+                    {pillar.summary}
+                  </p>
+
+                  {/* Usage Tag */}
+                  <div
+                    className={`pt-0.5 flex ${
+                      isRight ? "sm:justify-end justify-start" : "justify-start"
+                    }`}
+                  >
+                    <div className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs text-stone-700 bg-stone-300/50 px-3 py-1 rounded-full font-sans">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#D97706] shrink-0" />
+                      <span>{pillar.schedule}</span>
                     </div>
+                  </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleQuickAdd(product)}
-                      disabled={product.inStock === false}
-                      className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        addedItem === product.id
-                          ? "bg-emerald-700 text-white"
-                          : "bg-stone-900 hover:bg-[#D97706] hover:text-stone-950 text-white"
+                  {/* Horizontal Side-by-Side Micro Products */}
+                  {categoryProducts.length > 0 && (
+                    <div
+                      className={`pt-2 flex flex-col sm:flex-row flex-wrap gap-2.5 ${
+                        isRight
+                          ? "sm:justify-end justify-start"
+                          : "justify-start"
                       }`}
                     >
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>
-                        {addedItem === product.id ? "Added" : "Add to Bag"}
-                      </span>
-                    </button>
+                      {categoryProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          className="bg-white/95 border border-stone-300/80 rounded-xl p-2 sm:p-2.5 flex items-center justify-between sm:justify-start gap-2.5 shadow-2xs hover:shadow-xs transition-shadow w-full sm:w-auto min-w-[200px]"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-stone-100/70 flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-full object-contain"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="text-left min-w-[85px] max-w-[120px]">
+                              <h4 className="font-editorial font-bold text-xs text-stone-900 truncate">
+                                {product.name}
+                              </h4>
+                              <span className="font-mono text-[10px] sm:text-[11px] font-bold text-stone-700 block">
+                                ₹{product.price}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAdd(product)}
+                            disabled={product.inStock === false}
+                            className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider font-sans transition-all cursor-pointer shrink-0 ${
+                              addedItem === product.id
+                                ? "bg-emerald-700 text-white"
+                                : "bg-stone-900 hover:bg-[#D97706] text-white hover:text-stone-950"
+                            }`}
+                          >
+                            {addedItem === product.id ? "Added" : "Add"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Shop Direct Link */}
+                  <div
+                    className={`pt-1 ${
+                      isRight ? "sm:text-right text-left" : "text-left"
+                    }`}
+                  >
+                    <Link
+                      to="/shop"
+                      className="inline-flex items-center gap-1.5 font-editorial font-bold text-xs uppercase tracking-wider text-stone-900 hover:text-[#D97706] transition-colors group cursor-pointer"
+                    >
+                      <span>Explore Staples</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
                   </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="col-span-2 text-center py-6 text-xs text-stone-500">
-              Loading fresh products from store inventory...
-            </div>
-          )}
+            );
+          })}
+        </div>
+
+        {/* BOTTOM CTA BUTTON */}
+        <div className="text-center mt-12 sm:mt-16">
+          <Link
+            to="/shop"
+            className="inline-flex items-center gap-2 px-7 py-2.5 rounded-full bg-stone-900 hover:bg-[#D97706] text-white hover:text-stone-950 text-xs font-bold uppercase tracking-wider font-sans transition-all shadow-2xs hover:shadow-sm cursor-pointer"
+          >
+            <span>Explore All Cold-Pressed Staples</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </div>
     </section>

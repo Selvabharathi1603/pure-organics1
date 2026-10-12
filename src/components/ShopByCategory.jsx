@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { API_BASE_URL as CONFIG_URL } from "../config/api";
@@ -60,6 +60,24 @@ const EXACT_MATCH_CATEGORIES = [
 
 export default function ShopByCategory() {
   const [categories, setCategories] = useState(EXACT_MATCH_CATEGORIES);
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef(null);
+
+  // Multi-trigger observer: Replays whenever scrolled into view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.15 },
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -88,7 +106,7 @@ export default function ShopByCategory() {
           setCategories(merged);
         }
       } catch (err) {
-        // Safe fallback maintains verified imagery
+        // Fallback gracefully
       }
     };
     fetchCats();
@@ -98,76 +116,115 @@ export default function ShopByCategory() {
   }, []);
 
   return (
-    <section className="w-full bg-white text-[#18181b] pt-6 pb-24 border-b border-stone-100 font-sans select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header: Styled with Navbar PureOrganics Amber & Carbon */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-stone-200/80">
-          <div className="space-y-1.5 text-left">
-            {/* Pill matched to PureOrganics badge accent */}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fef3c7]/60 text-[#b45309] text-[10px] font-black uppercase tracking-[0.22em] border border-[#fde68a]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d97706] animate-pulse" />
+    <section
+      ref={sectionRef}
+      className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] max-w-none bg-[#FAF9F5] text-stone-900 pt-8 pb-16 border-b border-stone-200 select-none font-sans overflow-hidden"
+    >
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Replaying Scroll Heading */}
+        <div
+          className={`flex flex-col items-center text-center mb-6 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isVisible
+              ? "opacity-100 translate-x-0 translate-y-0"
+              : "opacity-0 -translate-x-12 translate-y-3"
+          }`}
+        >
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-[#D97706] mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] animate-pulse" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
               Direct Farm Harvest
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-[#18181b] tracking-tight">
-              Shop by <span className="text-[#d97706]">Department</span>
-            </h2>
           </div>
 
+          <h2
+            style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+            className="text-2xl sm:text-3xl lg:text-4xl font-medium text-stone-900 tracking-tight"
+          >
+            Shop by{" "}
+            <span className="text-[#D97706] italic font-normal">
+              Department
+            </span>
+          </h2>
+
+          <p className="mt-1 text-xs sm:text-sm text-stone-600 max-w-md font-normal px-2">
+            Cold-pressed single origin oils, unpolished native millets, and
+            unrefined sweeteners.
+          </p>
+
+          <div
+            className={`h-0.5 bg-[#D97706] rounded-full mt-3 transition-all duration-700 delay-150 ${
+              isVisible ? "w-14 opacity-100" : "w-0 opacity-0"
+            }`}
+          />
+        </div>
+
+        {/* View All Link */}
+        <div className="flex justify-end pb-3">
           <Link
             to="/shop"
-            className="group inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#18181b] hover:text-[#d97706] transition-colors"
+            className="group inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-800 hover:text-[#D97706] transition-colors"
           >
             <span>Explore All Harvests</span>
             <ArrowUpRight
               size={15}
-              className="text-[#d97706] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+              className="text-[#D97706] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
             />
           </Link>
         </div>
 
-        {/* Circular Department Medallions */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 pt-10 max-w-6xl mx-auto">
-          {categories.map((cat) => (
-            <Link
-              key={cat.id || cat.category_key}
-              to={cat.target_link}
-              className="group flex flex-col items-center text-center cursor-pointer"
-            >
-              {/* Outer Circular Frame: PureOrganics Charcoal Rim + Amber Glow on Hover */}
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1 bg-white border-[3px] border-white ring-2 ring-stone-200 group-hover:ring-[#d97706] shadow-[0_6px_20px_rgba(24,24,27,0.06)] group-hover:shadow-[0_12px_28px_rgba(217,119,6,0.25)] transition-all duration-300 group-hover:-translate-y-1.5">
-                {/* Full-Bleed Inner Image */}
-                <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100">
-                  <img
-                    src={cat.image}
-                    alt={cat.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.src =
-                        "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80";
-                    }}
-                  />
-                  {/* Subtle Dark Vignette with warm undertone */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent group-hover:opacity-40 transition-opacity" />
+        {/* Responsive Staggered Circular Department Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 lg:gap-8 pt-2 max-w-6xl mx-auto justify-items-center">
+          {categories.map((cat, idx) => {
+            const delays = [
+              "delay-75",
+              "delay-100",
+              "delay-150",
+              "delay-200",
+              "delay-300",
+            ];
+
+            return (
+              <Link
+                key={cat.id || cat.category_key}
+                to={cat.target_link}
+                className={`group flex flex-col items-center text-center cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] w-full max-w-[160px] ${
+                  delays[idx % delays.length]
+                } ${
+                  isVisible
+                    ? "opacity-100 translate-x-0"
+                    : "opacity-0 -translate-x-8"
+                }`}
+              >
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full p-1 bg-white border-2 border-stone-200 group-hover:border-[#D97706] shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:-translate-y-1.5 shrink-0">
+                  <div className="w-full h-full rounded-full overflow-hidden relative bg-stone-100">
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent group-hover:opacity-30 transition-opacity" />
+                  </div>
+
+                  <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-stone-900 text-[#D97706] text-[8px] sm:text-[9px] font-mono font-bold px-2 sm:px-2.5 py-0.5 rounded-full border border-stone-700 shadow-xs whitespace-nowrap group-hover:bg-[#D97706] group-hover:text-stone-950 transition-colors">
+                    {cat.count}
+                  </span>
                 </div>
 
-                {/* Batch Tag: Navbar PureOrganics Black Capsule + Amber Text */}
-                <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-[#18181b] text-[#fbbf24] text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full border border-[#d97706]/40 shadow-sm whitespace-nowrap group-hover:bg-[#d97706] group-hover:text-[#18181b] group-hover:border-[#b45309] transition-colors">
-                  {cat.count}
-                </span>
-              </div>
-
-              {/* Department Name & Tamil Subtitle */}
-              <div className="mt-5 space-y-0.5">
-                <h3 className="font-extrabold text-[#18181b] text-sm tracking-tight group-hover:text-[#d97706] transition-colors leading-tight">
-                  {cat.name}
-                </h3>
-                <p className="text-[11px] font-serif italic text-stone-500 group-hover:text-[#18181b] transition-colors">
-                  {cat.tamil}
-                </p>
-              </div>
-            </Link>
-          ))}
+                <div className="mt-4 sm:mt-5 space-y-0.5 px-1">
+                  <h3
+                    style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                    className="font-medium text-stone-900 text-sm sm:text-base md:text-lg tracking-tight group-hover:text-[#D97706] transition-colors leading-tight line-clamp-2"
+                  >
+                    {cat.name}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-stone-500 group-hover:text-stone-800 transition-colors font-medium">
+                    {cat.tamil}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

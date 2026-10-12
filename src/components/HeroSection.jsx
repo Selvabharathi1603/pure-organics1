@@ -188,10 +188,13 @@ export default function HeroSection({ onAddToCart }) {
               <span>Direct From Tirunelveli & Thanjavur Farmlands</span>
             </div>
 
-            {/* Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12] drop-shadow-md">
+            {/* Headline with Acid League Serif */}
+            <h1
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-3xl sm:text-5xl lg:text-6xl font-medium text-white tracking-tight leading-[1.12] drop-shadow-md"
+            >
               Real Mara Chekku Oils <br />
-              <span className="text-amber-400 drop-shadow-md">
+              <span className="text-amber-400 drop-shadow-md italic font-normal">
                 & Heirloom Grains.
               </span>
             </h1>
@@ -265,7 +268,7 @@ export default function HeroSection({ onAddToCart }) {
             </div>
           </div>
 
-          {/* ================= RIGHT: CIRCLE SPOTLIGHT (Hover pauses only here) ================= */}
+          {/* ================= RIGHT: CIRCLE SPOTLIGHT ================= */}
           <div
             className="lg:col-span-5 flex flex-col items-center justify-center"
             onMouseEnter={() => setIsHovered(true)}
@@ -329,8 +332,11 @@ export default function HeroSection({ onAddToCart }) {
                   {active.tamil}
                 </div>
 
-                {/* English Title */}
-                <h3 className="text-xl sm:text-2xl font-black text-white drop-shadow-md leading-snug">
+                {/* English Title with Acid League Serif */}
+                <h3
+                  style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                  className="text-2xl sm:text-3xl font-medium text-white drop-shadow-md leading-snug"
+                >
                   {active.title}
                 </h3>
 

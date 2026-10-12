@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 
 const StoreContext = createContext();
@@ -151,62 +152,6 @@ const INITIAL_ORDERS = [
     dispatch_note: "Order received. Packing at mill.",
     items: [],
   },
-  {
-    id: "ORG-438437",
-    tracking_id: "ORG-438437",
-    customer_name: "Selva",
-    customer_phone: "9487091074",
-    customer_address: "chennai",
-    total_amount: 210,
-    subtotal: 210,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
-  {
-    id: "ORG-560768",
-    tracking_id: "ORG-560768",
-    customer_name: "Abirami",
-    customer_phone: "7845748215",
-    customer_address: "thanjavur",
-    total_amount: 240,
-    subtotal: 240,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
-  {
-    id: "ORG-336649",
-    tracking_id: "ORG-336649",
-    customer_name: "Bharathi",
-    customer_phone: "7845748215",
-    customer_address: "coimbatore",
-    total_amount: 110,
-    subtotal: 110,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
-  {
-    id: "ORG-567245",
-    tracking_id: "ORG-567245",
-    customer_name: "Harinisri",
-    customer_phone: "9489885252",
-    customer_address: "guduvacherry",
-    total_amount: 1700,
-    subtotal: 1700,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
 ];
 
 export const StoreProvider = ({ children }) => {
@@ -291,7 +236,32 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_admin_user");
   };
 
-  // 2. CART DRAWER & PERSISTENCE
+  // 2. PAYMENT GATEWAY & COD CONTROL
+  const [isCodEnabled, setIsCodEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pure_organics_cod_status");
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleCodStatus = async (status) => {
+    setIsCodEnabled(status);
+    localStorage.setItem("pure_organics_cod_status", JSON.stringify(status));
+
+    try {
+      await fetch(`${API_BASE_URL}/api/cms/cod_setting`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCodEnabled: status }),
+      });
+    } catch (e) {
+      console.warn("COD status remote sync warning:", e.message);
+    }
+  };
+
+  // 3. CART DRAWER & PERSISTENCE
   const [isCartOpen, setIsCartOpen] = useState(false);
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
@@ -349,7 +319,7 @@ export const StoreProvider = ({ children }) => {
     localStorage.removeItem("pure_cart");
   };
 
-  // 3. PRODUCTS CATALOG
+  // 4. PRODUCTS CATALOG
   const [products, setProducts] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_products");
@@ -361,6 +331,7 @@ export const StoreProvider = ({ children }) => {
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   const fetchProducts = useCallback(async () => {
+    setLoadingProducts(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/products`);
       if (res.ok) {
@@ -392,6 +363,8 @@ export const StoreProvider = ({ children }) => {
         "[Pure Organics] Fetching products error, keeping local fallback:",
         err.message,
       );
+    } finally {
+      setLoadingProducts(false);
     }
   }, []);
 
@@ -493,7 +466,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 4. ORDERS & TRACKING
+  // 5. ORDERS & LOGISTICS
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem("pure_orders");
@@ -565,10 +538,8 @@ export const StoreProvider = ({ children }) => {
       created_at: new Date().toISOString(),
     };
 
-    // Update orders immediately
     setOrders((prev) => [newOrder, ...prev]);
 
-    // Live decrement inventory stock on client
     setProducts((prev) =>
       prev.map((prod) => {
         const itemInOrder = (orderData.items || cart).find(
@@ -587,7 +558,6 @@ export const StoreProvider = ({ children }) => {
 
     clearCart();
 
-    // Persist to backend
     fetch(`${API_BASE_URL}/api/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -620,7 +590,7 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
-  // 5. CMS CONFIGURATIONS & PERSISTENCE
+  // 6. DYNAMIC CMS & ANNOUNCEMENTS (Integrated with new Theme)
   const [heroSlides, setHeroSlides] = useState([
     {
       mode: "photo",
@@ -637,8 +607,10 @@ export const StoreProvider = ({ children }) => {
 
   const [announcements, setAnnouncements] = useState({
     bannerText: "Direct Cold-Pressed Harvests Dispatched Daily",
-    badgeText: "Direct Mill",
+    badgeText: "Single-Estate Harvest",
+    originText: "Thanjavur & Tirunelveli",
     couponCode: "HARVEST10",
+    freeShippingThreshold: 499,
   });
 
   const [healthGoals, setHealthGoals] = useState({
@@ -664,6 +636,27 @@ export const StoreProvider = ({ children }) => {
     discountPercent: 10,
   });
 
+  // Pull active CMS sections on mount
+  const fetchCMS = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/cms/all`);
+      if (res.ok) {
+        const cms = await res.json();
+        if (cms.announcement) setAnnouncements(cms.announcement);
+        if (cms.hero_slides) setHeroSlides(cms.hero_slides);
+        if (cms.health_goals) setHealthGoals(cms.health_goals);
+        if (cms.gifting_banner) setGiftingConfig(cms.gifting_banner);
+        if (cms.footer) setFooterConfig(cms.footer);
+      }
+    } catch (e) {
+      console.warn("CMS Remote sync notice:", e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCMS();
+  }, [fetchCMS]);
+
   const saveCMSSection = async (sectionName, data) => {
     if (sectionName === "hero_slides")
       setHeroSlides(Array.isArray(data) ? data : [data]);
@@ -685,6 +678,11 @@ export const StoreProvider = ({ children }) => {
     }
   };
 
+  // Helper for components needing immediate featured products
+  const featuredHarvests = useMemo(() => {
+    return products.slice(0, 3);
+  }, [products]);
+
   return (
     <StoreContext.Provider
       value={{
@@ -692,7 +690,10 @@ export const StoreProvider = ({ children }) => {
         setCurrentAdmin,
         loginAdmin,
         logoutAdmin,
+        isCodEnabled,
+        toggleCodStatus,
         products,
+        featuredHarvests,
         loadingProducts,
         fetchProducts,
         addProduct,

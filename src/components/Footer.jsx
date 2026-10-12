@@ -88,7 +88,10 @@ export default function Footer() {
               <Leaf className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide">
+              <h5
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-sm sm:text-base font-medium text-white tracking-wide"
+              >
                 Traditional Seeds
               </h5>
               <p className="text-[11px] text-stone-400 mt-0.5">
@@ -102,7 +105,10 @@ export default function Footer() {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide">
+              <h5
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-sm sm:text-base font-medium text-white tracking-wide"
+              >
                 Vaagai Marachekku
               </h5>
               <p className="text-[11px] text-stone-400 mt-0.5">
@@ -116,7 +122,10 @@ export default function Footer() {
               <Award className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide">
+              <h5
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-sm sm:text-base font-medium text-white tracking-wide"
+              >
                 100% Pure & Unrefined
               </h5>
               <p className="text-[11px] text-stone-400 mt-0.5">
@@ -130,7 +139,10 @@ export default function Footer() {
               <Truck className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide">
+              <h5
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-sm sm:text-base font-medium text-white tracking-wide"
+              >
                 Fast Door Delivery
               </h5>
               <p className="text-[11px] text-stone-400 mt-0.5">
@@ -147,7 +159,10 @@ export default function Footer() {
               <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-[#F59E0B] block">
                 Stay Updated
               </span>
-              <h3 className="text-xl sm:text-2xl text-white font-extrabold">
+              <h3
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-2xl sm:text-3xl text-white font-medium tracking-tight"
+              >
                 {config.headline}
               </h3>
               <p className="text-xs sm:text-sm text-stone-400 leading-relaxed">
@@ -193,8 +208,11 @@ export default function Footer() {
               <div className="w-8 h-8 rounded-lg bg-[#D97706]/15 border border-[#D97706]/40 flex items-center justify-center text-[#F59E0B]">
                 <Sprout className="w-4 h-4" />
               </div>
-              <span className="text-lg font-black tracking-tight text-white">
-                PURE<span className="text-[#D97706]">ORGANICS</span>
+              <span
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                className="text-xl sm:text-2xl font-medium tracking-tight text-white"
+              >
+                Pure <span className="text-[#D97706] italic">Organics</span>
               </span>
             </Link>
 
@@ -212,7 +230,10 @@ export default function Footer() {
 
           {/* Categories */}
           <div className="md:col-span-3 space-y-3 text-left">
-            <h4 className="text-xs uppercase tracking-wider font-extrabold text-white">
+            <h4
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-sm font-medium text-white tracking-wide"
+            >
               Shop by Category
             </h4>
             <ul className="space-y-2 text-stone-400">
@@ -261,7 +282,10 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="md:col-span-2 space-y-3 text-left">
-            <h4 className="text-xs uppercase tracking-wider font-extrabold text-white">
+            <h4
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-sm font-medium text-white tracking-wide"
+            >
               Quick Links
             </h4>
             <ul className="space-y-2 text-stone-400">
@@ -296,7 +320,10 @@ export default function Footer() {
 
           {/* Contact Details */}
           <div className="md:col-span-3 space-y-3 text-left">
-            <h4 className="text-xs uppercase tracking-wider font-extrabold text-white">
+            <h4
+              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              className="text-sm font-medium text-white tracking-wide"
+            >
               Customer Support
             </h4>
             <div className="space-y-2.5 text-stone-400">

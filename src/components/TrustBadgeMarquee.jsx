@@ -15,25 +15,30 @@ export default function TrustBadgeMarquee() {
   const images = [img1, img2, img3, img4, img5, img6, img7, img8, img9];
 
   // Repeat for continuous seamless loop
-  const trackImages = [...images, ...images, ...images, ...images];
+  const trackImages = [...images, ...images];
 
   return (
-    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bg-white border-y border-stone-200 py-6 sm:py-8 overflow-hidden select-none m-0 p-0 block">
-      <div className="flex w-max animate-trust-marquee items-center gap-14 sm:gap-20">
+    <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] max-w-none bg-[#FAF9F5] border-y border-stone-200/80 py-5 sm:py-7 md:py-8 overflow-hidden select-none">
+      {/* Left and Right Edge Gradient Fades for a seamless look */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 sm:w-24 md:w-32 bg-gradient-to-r from-[#FAF9F5] to-transparent z-10" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 sm:w-24 md:w-32 bg-gradient-to-l from-[#FAF9F5] to-transparent z-10" />
+
+      {/* Marquee Track */}
+      <div className="flex w-max items-center gap-8 sm:gap-14 md:gap-20 animate-trust-marquee hover:[animation-play-state:paused]">
         {trackImages.map((src, index) => (
           <div
             key={index}
-            className="shrink-0 flex items-center justify-center h-24 w-32 sm:h-32 sm:w-44 md:h-36 md:w-48"
+            className="shrink-0 flex items-center justify-center h-14 w-24 sm:h-20 sm:w-32 md:h-24 md:w-40 px-2 transition-transform duration-300 hover:scale-105"
           >
             <img
               src={src}
-              alt="Trust Badge"
-              className="w-full h-full object-contain pointer-events-none filter drop-shadow-xs"
-              loading="eager"
+              alt="Certification & Trust Badge"
+              className="max-h-full max-w-full object-contain pointer-events-none filter drop-shadow-xs opacity-90 hover:opacity-100 transition-opacity"
+              loading="lazy"
             />
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

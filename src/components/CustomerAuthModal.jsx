@@ -61,7 +61,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
     try {
       console.log(`📡 Fetching: ${BASE_URL}/api/auth/send-otp`);
-      const res = await fetch(`${BASE_URL}/api/auth/send-otp`, {
+      const res = await fetch(`${BASE_URL}/api/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: cleanPhone }),
@@ -75,7 +75,7 @@ export default function CustomerAuthModal({ isOpen, onClose, onLoginSuccess }) {
         setCanResend(false);
         setOtp(["", "", "", "", "", ""]);
       } else {
-        setErrorMsg(data.error || "Failed to dispatch verification code");
+        setErrorMsg(data.message || "Failed to dispatch verification code");
       }
     } catch (err) {
       console.error("❌ Network fetch error:", err);

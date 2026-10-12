@@ -7,18 +7,18 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Surface & Canvas Tokens (Strict Stone & Amber E-Commerce Palette) */
-  --color-brand-bg: #FAFAF9;      /* Tailwind stone-50 (Eliminated green #EBF7EE) */
-  --color-brand-cream: #FFFFFF;   /* Pure white card surface */
-  --color-brand-card: #FFFFFF;    /* Pure white */
+  --color-brand-bg: #FAFAF9;       /* Tailwind stone-50 */
+  --color-brand-cream: #FFFFFF;    /* Pure white card surface */
+  --color-brand-card: #FFFFFF;     /* Pure white */
 
   /* Text & Contrast Tokens */
-  --color-brand-dark: #1C1917;    /* Tailwind stone-900 */
-  --color-brand-green: #D97706;   /* Re-mapped to Pure Amber brand primary */
-  --color-brand-subtext: #57534E; /* Tailwind stone-600 */
-  --color-brand-muted: #A8A29E;   /* Tailwind stone-400 */
+  --color-brand-dark: #1C1917;     /* Tailwind stone-900 */
+  --color-brand-green: #D97706;    /* Re-mapped to Pure Amber brand primary */
+  --color-brand-subtext: #57534E;  /* Tailwind stone-600 */
+  --color-brand-muted: #A8A29E;    /* Tailwind stone-400 */
 
   /* Borders & Dividers */
-  --color-brand-border: #E7E5E4;  /* Tailwind stone-200 */
+  --color-brand-border: #E7E5E4;   /* Tailwind stone-200 */
   --color-brand-border-dark: #292524; /* Tailwind stone-800 */
 }
 
@@ -56,6 +56,7 @@
   }
 }
 
+/* 1. Continuous Trust Marquee Slider */
 @keyframes trustMarquee {
   0% {
     transform: translateX(0);
@@ -73,4 +74,78 @@
 
 .animate-trust-marquee:hover {
   animation-play-state: paused;
+}
+
+/* 2. Scroll Waving Heading Animation (Left to Middle Wave Entrance) */
+@keyframes waveInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-48px) translateY(12px) skewX(-4deg);
+  }
+  60% {
+    opacity: 0.85;
+    transform: translateX(6px) translateY(-2px) skewX(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) skewX(0deg);
+  }
+}
+
+.animate-wave-heading {
+  animation: waveInLeft 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 3. Expanding Amber Accent Indicator Line */
+@keyframes amberLineExpand {
+  0% {
+    width: 0px;
+    opacity: 0;
+  }
+  100% {
+    width: 56px;
+    opacity: 1;
+  }
+}
+
+.animate-amber-line {
+  animation: amberLineExpand 0.75s ease-out 0.25s forwards;
+}
+@keyframes partnerScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-partner-scroll {
+  display: flex;
+  width: max-content;
+  animation: partnerScroll 22s linear infinite;
+}
+.font-editorial {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+.font-handwriting {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+.kosterina-font {
+  font-family: 'Marck Script', 'Caveat', cursive !important;
+}
+.font-acid-serif {
+  font-family: 'Newsreader', Georgia, serif;
+}
+@keyframes trust-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-trust-marquee {
+  animation: trust-marquee 32s linear infinite;
 }

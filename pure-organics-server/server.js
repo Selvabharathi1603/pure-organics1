@@ -157,62 +157,6 @@ let memoryOrders = [
     dispatch_note: "Order received. Packing at mill.",
     items: [],
   },
-  {
-    id: "ORG-438437",
-    tracking_id: "ORG-438437",
-    customer_name: "Selva",
-    customer_phone: "9487091074",
-    customer_address: "chennai",
-    total_amount: 210,
-    subtotal: 210,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
-  {
-    id: "ORG-560768",
-    tracking_id: "ORG-560768",
-    customer_name: "Abirami",
-    customer_phone: "7845748215",
-    customer_address: "thanjavur",
-    total_amount: 240,
-    subtotal: 240,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
-  {
-    id: "ORG-336649",
-    tracking_id: "ORG-336649",
-    customer_name: "Bharathi",
-    customer_phone: "7845748215",
-    customer_address: "coimbatore",
-    total_amount: 110,
-    subtotal: 110,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
-  {
-    id: "ORG-567245",
-    tracking_id: "ORG-567245",
-    customer_name: "Harinisri",
-    customer_phone: "9489885252",
-    customer_address: "guduvacherry",
-    total_amount: 1700,
-    subtotal: 1700,
-    discount_applied: 0,
-    payment_method: "Cash on Delivery",
-    status: "Placed",
-    dispatch_note: "Order received. Packing at mill.",
-    items: [],
-  },
 ];
 
 let memoryCMS = {
@@ -228,8 +172,10 @@ let memoryCMS = {
   ],
   announcement: {
     bannerText: "Direct Cold-Pressed Harvests Dispatched Daily",
-    badgeText: "Direct Mill",
+    badgeText: "Single-Estate Harvest",
+    originText: "Thanjavur & Tirunelveli",
     couponCode: "HARVEST10",
+    freeShippingThreshold: 499,
   },
   health_goals: {
     heading: "Wholesome Nutrition from Native Crops",
@@ -244,6 +190,9 @@ let memoryCMS = {
     email: "care@pureorganics.in",
     address: "Kallidaikurichi, Ambasamudram, Tirunelveli, Tamil Nadu - 627416",
     fssai: "12423008000412",
+  },
+  cod_setting: {
+    isCodEnabled: true,
   },
 };
 
@@ -294,6 +243,17 @@ db.query(
   )`,
   (err) => {
     if (err) console.warn("Products table init notice:", err.message);
+  }
+);
+
+db.query(
+  `CREATE TABLE IF NOT EXISTS cms_content (
+    section_name VARCHAR(100) PRIMARY KEY,
+    content_data JSON NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )`,
+  (err) => {
+    if (err) console.warn("CMS content table init notice:", err.message);
   }
 );
 
@@ -425,7 +385,7 @@ app.post("/api/products", (req, res) => {
       newProduct.image,
       newProduct.description,
     ],
-    (err, result) => {
+    (err) => {
       if (err) console.warn("DB product insert fallback:", err.message);
       res.status(201).json({ success: true, product: newProduct });
     }
@@ -678,17 +638,63 @@ app.delete("/api/admin/users/:id", (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 6. STOREFRONT CMS PERSISTENCE
+// 6. STOREFRONT CMS PERSISTENCE (Synced with MySQL)
 // -------------------------------------------------------------
+app.get("/api/cms/all", (req, res) => {
+  db.query("SELECT section_name, content_data FROM cms_content", (err, rows) => {
+    if (err || !rows || rows.length === 0) {
+      return res.json(memoryCMS);
+    }
+
+    const aggregated = { ...memoryCMS };
+    rows.forEach((row) => {
+      try {
+        aggregated[row.section_name] =
+          typeof row.content_data === "string"
+            ? JSON.parse(row.content_data)
+            : row.content_data;
+      } catch (e) {
+        aggregated[row.section_name] = row.content_data;
+      }
+    });
+
+    res.json(aggregated);
+  });
+});
+
 app.get("/api/cms/:section", (req, res) => {
   const { section } = req.params;
-  res.json(memoryCMS[section] || {});
+
+  db.query(
+    "SELECT content_data FROM cms_content WHERE section_name = ?",
+    [section],
+    (err, rows) => {
+      if (!err && rows && rows.length > 0) {
+        const val = rows[0].content_data;
+        return res.json(typeof val === "string" ? JSON.parse(val) : val);
+      }
+      res.json(memoryCMS[section] || {});
+    }
+  );
 });
 
 app.post("/api/cms/:section", (req, res) => {
   const { section } = req.params;
-  memoryCMS[section] = req.body;
-  res.json({ success: true, section, data: req.body });
+  const payload = req.body;
+
+  memoryCMS[section] = payload;
+
+  const jsonPayload = JSON.stringify(payload);
+  db.query(
+    `INSERT INTO cms_content (section_name, content_data) 
+     VALUES (?, ?) 
+     ON DUPLICATE KEY UPDATE content_data = VALUES(content_data)`,
+    [section, jsonPayload],
+    (err) => {
+      if (err) console.warn("CMS DB sync warning:", err.message);
+      res.json({ success: true, section, data: payload });
+    }
+  );
 });
 
 // -------------------------------------------------------------
