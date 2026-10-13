@@ -1095,3 +1095,130 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`[Pure Organics] Server running on port ${PORT}`);
 });
+// nila assistant endpoint
+app.post("/api/assistant", async (req, res) => {
+  try {
+    const { message } = req.body;
+    const userQuery = (message || "").toLowerCase();
+
+    // sample response logic based on pure organics products
+    if (userQuery.includes("karuppu kavuni") || userQuery.includes("kavuni")) {
+      return res.json({
+        reply: "Karuppu Kavuni is our heritage black rice packed with high anthocyanin antioxidants, iron, and fiber. It helps in diabetes management and boosting immunity. Available in 1kg direct-mill harvest packs at ₹160.",
+      });
+    }
+
+    if (userQuery.includes("oil") || userQuery.includes("chekku")) {
+      return res.json({
+        reply: "We extract our cold-pressed oils using traditional vaagai wood chekku without chemical refining. We offer wood-pressed groundnut, sesame gingelly, and cold-pressed coconut oils.",
+      });
+    }
+
+    if (userQuery.includes("honey")) {
+      return res.json({
+        reply: "Our wild forest honey is raw, unprocessed, and multi-floral, harvested directly from native tribal beekeepers without artificial sugar syrup.",
+      });
+    }
+
+    if (userQuery.includes("millet") || userQuery.includes("thinai") || userQuery.includes("varagu")) {
+      return res.json({
+        reply: "We stock unpolished native millets including thinai, varagu, kambu, and samai. They are rich in dietary fiber and ideal for a low-glycemic diet.",
+      });
+    }
+
+    return res.json({
+      reply: "Vanakkam! I can help you with details about our cold-pressed wood chekku oils, unpolished heritage rice varieties, native millets, and wild raw honey. What product would you like to know about?",
+    });
+  } catch (error) {
+    console.error("Assistant route error:", error);
+    res.status(500).json({ error: "Assistant temporary service issue" });
+  }
+});
+// nila assistant endpoint for english, tamil & tanglish
+app.post("/api/ai/assistant", (req, res) => {
+  try {
+    const { message, catalog } = req.body;
+    const raw = (message || "").toLowerCase().trim();
+
+    // 1. karuppu kavuni & heritage rice (tamil script, tanglish & english)
+    if (
+      raw.includes("kavuni") ||
+      raw.includes("black rice") ||
+      raw.includes("arisi") ||
+      raw.includes("rice") ||
+      raw.includes("அரிசி") ||
+      raw.includes("கவுனி")
+    ) {
+      return res.json({
+        reply:
+          "Karuppu Kavuni is our heritage black rice packed with high anthocyanin antioxidants, iron, and fiber. It helps in diabetes management and boosting immunity. Available in 1kg direct-mill harvest packs at ₹160.",
+        recommendedProductIds: [3],
+      });
+    }
+
+    // 2. cold-pressed oils (tamil script, tanglish & english)
+    if (
+      raw.includes("oil") ||
+      raw.includes("ennai") ||
+      raw.includes("chekku") ||
+      raw.includes("cooking") ||
+      raw.includes("frying") ||
+      raw.includes("samayal") ||
+      raw.includes("எண்ணெய்") ||
+      raw.includes("செக்கு")
+    ) {
+      return res.json({
+        reply:
+          "For daily cooking and deep frying, our cold-pressed wood chekku groundnut oil is ideal due to its high smoke point. For traditional seasoning and authentic aroma, wood-pressed gingelly oil is best. Both are 100% unrefined and chemical-free.",
+        recommendedProductIds: [1, 2],
+      });
+    }
+
+    // 3. raw forest honey (tamil script, tanglish & english)
+    if (
+      raw.includes("honey") ||
+      raw.includes("then") ||
+      raw.includes("sweet") ||
+      raw.includes("jaggery") ||
+      raw.includes("karupatti") ||
+      raw.includes("vellam") ||
+      raw.includes("தேன்") ||
+      raw.includes("கருப்பட்டி")
+    ) {
+      return res.json({
+        reply:
+          "Our wild forest honey is 100% raw and unprocessed, harvested directly by native tribal beekeepers in the Western Ghats without added sugar syrup or heat treatment.",
+        recommendedProductIds: [5],
+      });
+    }
+
+    // 4. millets / sirudhaniyangal (tamil script, tanglish & english)
+    if (
+      raw.includes("millet") ||
+      raw.includes("thinai") ||
+      raw.includes("varagu") ||
+      raw.includes("kambu") ||
+      raw.includes("samai") ||
+      raw.includes("sirudhaniyam") ||
+      raw.includes("திணை") ||
+      raw.includes("வரகு") ||
+      raw.includes("கம்பு")
+    ) {
+      return res.json({
+        reply:
+          "We offer unpolished native millets including thinai, varagu, kambu, and samai. They are rich in dietary fiber, low in glycemic index, and ideal for weight management and balanced blood sugar.",
+        recommendedProductIds: [4],
+      });
+    }
+
+    // 5. general fallback reply
+    return res.json({
+      reply:
+        "Vanakkam! I am Nila, your pantry assistant. Ask me anything about our wood-pressed oils, unpolished Karuppu Kavuni rice, native millets, or raw forest honey, and I will guide you with details and recommendations.",
+      recommendedProductIds: [1],
+    });
+  } catch (error) {
+    console.error("AI assistant route error:", error);
+    res.status(500).json({ error: "Assistant temporary service issue" });
+  }
+});

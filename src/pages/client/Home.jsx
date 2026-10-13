@@ -10,6 +10,7 @@ import AlsoAvailableOn from "../../components/AlsoAvailableOn";
 import PurityManifesto from "../../components/PurityManifesto";
 import FeaturedHarvests from "../../components/FeaturedHarvests";
 import NilaAssistantCallout from "../../components/NilaAssistantCallout";
+import FestiveFlashBanner from "../../components/FestiveFlashBanner";
 import { Tag } from "lucide-react";
 import { useStore } from "../../context/storecontext";
 
@@ -24,17 +25,18 @@ export default function Home() {
 
   return (
     <div className="w-full min-h-screen bg-[#FAF9F5] text-stone-900 font-sans overflow-x-hidden selection:bg-[#D97706] selection:text-white">
-      {/* 0. ANNOUNCEMENT BAR */}
+      {/* 0. FESTIVE FLASH BANNER & HERO SECTION (ZERO GAP ATTACHED) */}
+      <div className="w-full m-0 p-0 leading-none">
+        <FestiveFlashBanner />
+        <div className="-mt-px">
+          <HeroSection />
+        </div>
+      </div>
 
-      {/* 1. HERO SHOWCASE */}
-      <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-4">
-        <HeroSection />
-      </section>
-
-      {/* 2. TRUST BADGE MARQUEE (Full viewport width) */}
+      {/* 2. TRUST BADGE MARQUEE */}
       <TrustBadgeMarquee />
 
-      {/* 3. CATEGORY HUBS (Full viewport width) */}
+      {/* 3. CATEGORY HUBS */}
       <ShopByCategory />
 
       {/* 4. MILL HERITAGE & PLATFORMS */}
@@ -51,7 +53,7 @@ export default function Home() {
         <PurityManifesto />
       </div>
 
-      {/* 7. ESSENTIAL LISTS & GIFTING BOX (Scratch card) */}
+      {/* 7. ESSENTIAL LISTS & GIFTING BOX */}
       <div className="w-full">
         <GiftingAndLists />
       </div>

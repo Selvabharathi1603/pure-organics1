@@ -112,15 +112,12 @@ export default function HeroSection({ onAddToCart }) {
   const [products, setProducts] = useState(DEFAULT_HERO_PRODUCTS);
   const [index, setIndex] = useState(0);
   const [added, setAdded] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
-  // Keep latest products length in ref to avoid stale closures
   const lengthRef = useRef(products.length);
   useEffect(() => {
     lengthRef.current = products.length;
   }, [products.length]);
 
-  // 1. Fetch backend items
   useEffect(() => {
     let isMounted = true;
     const fetchHeroProducts = async () => {
@@ -138,9 +135,7 @@ export default function HeroSection({ onAddToCart }) {
         if (isMounted && incoming && incoming.length > 0) {
           setProducts(incoming);
         }
-      } catch (err) {
-        // Fallback default array stays active
-      }
+      } catch (err) {}
     };
     fetchHeroProducts();
     return () => {
@@ -148,16 +143,13 @@ export default function HeroSection({ onAddToCart }) {
     };
   }, []);
 
-  // 2. Guaranteed Auto-Slide Interval (every 3.5 seconds)
   useEffect(() => {
-    if (isHovered) return;
-
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % (lengthRef.current || 1));
     }, 3500);
 
     return () => clearInterval(timer);
-  }, [isHovered]);
+  }, []);
 
   const active = products[index] || DEFAULT_HERO_PRODUCTS[0];
 
@@ -173,28 +165,23 @@ export default function HeroSection({ onAddToCart }) {
 
   return (
     <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden bg-stone-950 text-white select-none font-sans">
-      {/* 1. BACKGROUND */}
       <div className="absolute inset-0 z-0">
         <img
           src={HERO_BG_IMAGE}
           alt="Tamil Nadu Rice Field Harvest"
           className="w-full h-full object-cover object-center scale-102 transition-transform duration-1000"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/35" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/92 via-black/65 to-black/35" />
       </div>
 
-      {/* 2. INNER FOREGROUND GRID */}
-      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-12 lg:py-16">
+      <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-10 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* ================= LEFT COLUMN: FARM CONTENT ================= */}
           <div className="lg:col-span-7 space-y-4 text-left">
-            {/* Direct Farm Pill */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/60 border border-white/20 text-white text-xs font-semibold tracking-wide backdrop-blur-md shadow-md">
               <Sparkles size={13} className="text-amber-400" />
               <span>Direct From Tirunelveli &amp; Thanjavur Farmlands</span>
             </div>
 
-            {/* Headline with Acid League Serif */}
             <h1
               style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               className="text-3xl sm:text-5xl lg:text-6xl font-medium text-white tracking-tight leading-[1.12] drop-shadow-md"
@@ -205,12 +192,10 @@ export default function HeroSection({ onAddToCart }) {
               </span>
             </h1>
 
-            {/* Description */}
             <p className="text-stone-100 text-sm sm:text-base leading-relaxed max-w-xl font-normal drop-shadow-sm min-h-[3.8rem]">
               {active.description}
             </p>
 
-            {/* 3 Quality Badges */}
             <div className="flex flex-wrap gap-2.5 pt-1">
               <span className="text-xs font-bold text-white bg-black/60 border border-white/20 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-sm">
                 ✓ Zero Palm Oil Blending
@@ -223,7 +208,6 @@ export default function HeroSection({ onAddToCart }) {
               </span>
             </div>
 
-            {/* Order Buttons */}
             <div className="pt-2 flex flex-wrap items-center gap-3.5">
               <a
                 href="#shop"
@@ -240,7 +224,6 @@ export default function HeroSection({ onAddToCart }) {
                 <span>Track Order</span>
               </Link>
 
-              {/* Verified Feedback */}
               <div className="flex items-center gap-1.5 text-xs text-stone-200 ml-1 bg-black/50 px-3 py-1.5 rounded-full border border-white/15 backdrop-blur-sm">
                 <div className="flex text-amber-400">
                   {[...Array(5)].map((_, i) => (
@@ -256,7 +239,6 @@ export default function HeroSection({ onAddToCart }) {
               </div>
             </div>
 
-            {/* 5-Item Quick Switcher Pills */}
             <div className="pt-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
               {products.map((p, i) => (
                 <button
@@ -274,20 +256,13 @@ export default function HeroSection({ onAddToCart }) {
             </div>
           </div>
 
-          {/* ================= RIGHT: CIRCLE SPOTLIGHT ================= */}
-          <div
-            className="lg:col-span-5 flex flex-col items-center justify-center"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-          >
+          <div className="lg:col-span-5 flex flex-col items-center justify-center">
             <div className="relative flex flex-col items-center">
-              {/* LARGE CIRCLE CONTAINER */}
               <div
                 onClick={handleNext}
                 title="Click for next item"
-                className="relative w-76 h-76 sm:w-92 sm:h-92 rounded-full p-2 bg-gradient-to-tr from-amber-400/60 via-white/40 to-amber-400/30 shadow-2xl backdrop-blur-md flex items-center justify-center cursor-pointer group"
+                className="relative w-72 h-72 sm:w-92 sm:h-92 rounded-full p-2 bg-gradient-to-tr from-amber-400/60 via-white/40 to-amber-400/30 shadow-2xl backdrop-blur-md flex items-center justify-center cursor-pointer group"
               >
-                {/* Product Photo Circle */}
                 <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white shadow-inner bg-black">
                   <img
                     key={active.id}
@@ -298,13 +273,11 @@ export default function HeroSection({ onAddToCart }) {
                   <div className="absolute inset-0 rounded-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] pointer-events-none" />
                 </div>
 
-                {/* Floating Stock Badge Sitting on Top Center */}
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-stone-950/95 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xl border border-white/30 whitespace-nowrap z-20">
                   <Flame size={13} className="text-amber-400" />
                   <span>Only {active.stock} left in batch</span>
                 </div>
 
-                {/* Left Arrow Button */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -317,7 +290,6 @@ export default function HeroSection({ onAddToCart }) {
                   <ChevronLeft size={20} />
                 </button>
 
-                {/* Right Arrow Button */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -331,14 +303,11 @@ export default function HeroSection({ onAddToCart }) {
                 </button>
               </div>
 
-              {/* Product Meta Section */}
               <div className="mt-4 text-center max-w-sm flex flex-col items-center">
-                {/* Tamil Name */}
                 <div className="inline-flex items-center px-4 py-1 rounded-full bg-white text-stone-950 text-xs sm:text-sm font-extrabold shadow-lg mb-2 border border-stone-200">
                   {active.tamil}
                 </div>
 
-                {/* English Title with Acid League Serif */}
                 <h3
                   style={{ fontFamily: "'Newsreader', Georgia, serif" }}
                   className="text-2xl sm:text-3xl font-medium text-white drop-shadow-md leading-snug"
@@ -346,7 +315,6 @@ export default function HeroSection({ onAddToCart }) {
                   {active.title}
                 </h3>
 
-                {/* Pricing & Units */}
                 <div className="mt-2 flex items-center justify-center gap-2.5">
                   <span className="text-2xl sm:text-3xl font-black text-amber-400 drop-shadow-xs">
                     ₹{active.price}
@@ -362,7 +330,6 @@ export default function HeroSection({ onAddToCart }) {
                   </span>
                 </div>
 
-                {/* Order Button */}
                 <div className="mt-3.5 flex justify-center w-full">
                   <button
                     type="button"
@@ -386,26 +353,25 @@ export default function HeroSection({ onAddToCart }) {
                     )}
                   </button>
                 </div>
-
-                {/* Progress Indicators */}
-                <div className="flex items-center justify-center gap-1.5 mt-3.5">
-                  {products.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setIndex(i)}
-                      aria-label={`Go to slide ${i + 1}`}
-                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                        index === i
-                          ? "w-6 bg-amber-400"
-                          : "w-1.5 bg-white/40 hover:bg-white/70"
-                      }`}
-                    />
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+        {products.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIndex(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+              index === i
+                ? "w-7 bg-amber-400"
+                : "w-2 bg-white/40 hover:bg-white/70"
+            }`}
+          />
+        ))}
       </div>
     </section>
   );

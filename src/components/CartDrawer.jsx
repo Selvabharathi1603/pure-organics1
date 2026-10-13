@@ -47,12 +47,13 @@ export default function CartDrawer() {
   const deliveryCharge = subtotal >= 499 ? 0 : 50;
   const finalTotal = subtotal + deliveryCharge;
 
-  const handleCheckoutClick = () => {
+  const handleCheckoutClick = (e) => {
+    e.preventDefault();
     if (!cart || cart.length === 0) return;
 
     if (isPhoneVerified) {
       closeCart();
-      navigate("/checkout");
+      navigate("/cart", { state: { step: 2 } });
     } else {
       setIsAuthModalOpen(true);
     }
@@ -95,7 +96,7 @@ export default function CartDrawer() {
               transition={{ type: "spring", damping: 28, stiffness: 280 }}
               className="w-screen max-w-md bg-white border-l border-stone-300 shadow-2xl flex flex-col"
             >
-              {/* 1. TOP HEADER (BLACK) */}
+              {/* 1. TOP HEADER */}
               <div className="p-4 sm:p-5 bg-black border-b border-white/10 flex items-center justify-between text-white shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-[#D97706] flex items-center justify-center text-black">
@@ -144,7 +145,7 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              {/* 2. MIDDLE ITEMS LIST (PURE WHITE) */}
+              {/* 2. MIDDLE ITEMS LIST */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-white divide-y divide-stone-100 space-y-3">
                 {!cart || cart.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
@@ -161,7 +162,7 @@ export default function CartDrawer() {
                       </p>
                     </div>
                     <Link
-                      to="/catalog"
+                      to="/shop"
                       onClick={closeCart}
                       className="px-6 py-2.5 bg-stone-900 hover:bg-[#D97706] hover:text-black text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs"
                     >
@@ -249,10 +250,9 @@ export default function CartDrawer() {
                 )}
               </div>
 
-              {/* 3. CALCULATION & CHECKOUT (ALONE BLACK) */}
+              {/* 3. CALCULATION & CHECKOUT */}
               {cart && cart.length > 0 && (
-                <div className="p-4 sm:p-5 bg-[#141816] border-t border-white/10 space-y-3.5 text-white pb-24 sm:pb-6 shrink-0">
-                  {/* Detailed Math Breakdown */}
+                <div className="p-4 sm:p-5 bg-[#141816] border-t border-white/10 space-y-3.5 text-white pb-6 shrink-0">
                   <div className="space-y-1.5 text-xs text-left">
                     <div className="flex justify-between text-stone-400">
                       <span>Total MRP</span>
@@ -335,8 +335,9 @@ export default function CartDrawer() {
             isOpen={isAuthModalOpen}
             onClose={() => setIsAuthModalOpen(false)}
             onSuccess={() => {
+              setIsAuthModalOpen(false);
               closeCart();
-              navigate("/checkout");
+              navigate("/cart", { state: { step: 2 } });
             }}
           />
         </div>

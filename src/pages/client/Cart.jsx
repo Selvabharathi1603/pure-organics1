@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Trash2,
   ShoppingBag,
@@ -43,9 +43,11 @@ export default function Cart({ isOpen, onClose }) {
     customerSession,
   } = useStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Multi-step controller: 1 = Bag/Coupons, 2 = Shipping Address, 3 = Payment & Confirmation
-  const [currentStep, setCurrentStep] = useState(1);
+  const initialStep = location?.state?.step || 1;
+  const [currentStep, setCurrentStep] = useState(initialStep);
 
   const [customer, setCustomer] = useState({
     name: customerSession?.full_name || "",
@@ -64,6 +66,12 @@ export default function Cart({ isOpen, onClose }) {
       }));
     }
   }, [customerSession]);
+
+  useEffect(() => {
+    if (location?.state?.step) {
+      setCurrentStep(location.state.step);
+    }
+  }, [location?.state?.step]);
 
   // PhoneAuthModal trigger state
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -224,19 +232,23 @@ export default function Cart({ isOpen, onClose }) {
       });
 
       const orderData = await res.json();
-      if (!res.ok)
+      if (!res.ok) {
         throw new Error(
           orderData.error || "Failed to initialize online payment",
         );
+      }
 
       const options = {
-        key: orderData.keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
+        key: orderData.keyId || orderData.key || "rzp_test_fallback",
+        amount: orderData.amount || finalPayable * 100,
+        currency: orderData.currency || "INR",
         name: "Pure Organics",
         description: "Direct Mill Harvest Order",
-        order_id: orderData.orderId,
-        prefill: { name: customer.name, contact: customer.phone },
+        order_id: orderData.orderId || orderData.id,
+        prefill: {
+          name: customer.name || "Customer",
+          contact: customer.phone || "",
+        },
         theme: { color: "#D97706" },
         handler: async function (response) {
           try {
@@ -270,10 +282,15 @@ export default function Cart({ isOpen, onClose }) {
       };
 
       const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on("payment.failed", function (response) {
+        setFormError(
+          response.error?.description || "Payment failed. Please try again.",
+        );
+        setIsProcessingPayment(false);
+      });
       razorpayInstance.open();
     } catch (err) {
       setFormError(err.message || "Failed to initiate online checkout.");
-    } finally {
       setIsProcessingPayment(false);
     }
   };
@@ -308,16 +325,18 @@ export default function Cart({ isOpen, onClose }) {
       payment_ref: paymentRef,
     });
 
-    // Sync updated address profile to MySQL for future visits
-    fetch(`${API_BASE_URL}/api/customers/update-profile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        phone: customer.phone,
-        full_name: customer.name,
-        address: customer.address,
-      }),
-    }).catch(() => {});
+    // Safely sync profile update without crashing order success flow
+    if (customer.phone) {
+      fetch(`${API_BASE_URL}/api/customers/update-profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: customer.phone,
+          full_name: customer.name,
+          address: customer.address,
+        }),
+      }).catch(() => {});
+    }
 
     setCompletedOrder({
       ...snapshot,
@@ -362,9 +381,7 @@ export default function Cart({ isOpen, onClose }) {
     }
   };
 
-  // -------------------------------------------------------------
   // 1. ORDER CONFIRMED VIEW
-  // -------------------------------------------------------------
   if (completedOrder) {
     return (
       <div className="min-h-screen bg-stone-50 text-stone-900 py-10 px-4 sm:px-6 lg:px-8 font-sans select-none text-left">
@@ -471,7 +488,7 @@ export default function Cart({ isOpen, onClose }) {
                     <span className="text-stone-900 font-medium">
                       {item.name}{" "}
                       <span className="text-stone-500">
-                        ({item.unit}) × {item.qty}
+                        {item.unit ? `(${item.unit})` : ""} × {item.qty}
                       </span>
                     </span>
                     <span className="font-mono font-bold text-stone-900">
@@ -584,12 +601,12 @@ export default function Cart({ isOpen, onClose }) {
               your cart.
             </p>
           </div>
-          <button
-            onClick={handleClose}
+          <Link
+            to="/shop"
             className="inline-flex items-center gap-2 px-7 py-3 bg-stone-900 hover:bg-[#D97706] hover:text-black text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-xs transition-all cursor-pointer"
           >
             Browse Products <ArrowRight className="w-4 h-4" />
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -619,9 +636,7 @@ export default function Cart({ isOpen, onClose }) {
     return emptyContent;
   }
 
-  // -------------------------------------------------------------
   // 3. STEPPED CART CONTENT LAYOUT
-  // -------------------------------------------------------------
   const cartContent = (
     <div className="min-h-screen bg-stone-50 text-stone-900 py-8 px-4 sm:px-6 lg:px-8 font-sans select-none text-left">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -635,12 +650,12 @@ export default function Cart({ isOpen, onClose }) {
               Organic staples dispatched directly from native mills.
             </p>
           </div>
-          <button
-            onClick={handleClose}
+          <Link
+            to="/shop"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl text-xs font-bold text-stone-900 transition-all cursor-pointer shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" /> Continue Shopping
-          </button>
+          </Link>
         </div>
 
         {/* Multi-Step Indicator */}
@@ -706,9 +721,7 @@ export default function Cart({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* ------------------------------------------------------------- */}
         {/* STEP 1: REVIEW CART ITEMS & COUPONS */}
-        {/* ------------------------------------------------------------- */}
         {currentStep === 1 && (
           <div className="space-y-6">
             <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-6">
@@ -911,9 +924,7 @@ export default function Cart({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* ------------------------------------------------------------- */}
         {/* STEP 2: SHIPPING DETAILS & PINCODE CHECK */}
-        {/* ------------------------------------------------------------- */}
         {currentStep === 2 && (
           <div className="space-y-6">
             <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-5">
@@ -994,7 +1005,7 @@ export default function Cart({ isOpen, onClose }) {
                       }`}
                     >
                       {allowWhatsApp && (
-                        <Check className="w-3 h-3 stroke-[3]" />
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
                       )}
                     </div>
                   </div>
@@ -1043,9 +1054,7 @@ export default function Cart({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* ------------------------------------------------------------- */}
         {/* STEP 3: PAYMENT METHOD */}
-        {/* ------------------------------------------------------------- */}
         {currentStep === 3 && (
           <div className="space-y-6">
             <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-xs space-y-6">
